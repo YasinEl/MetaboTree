@@ -1,0 +1,14 @@
+name: r_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - r-base
+  - r-tidyverse # if you use tidyverse in your script
+  - r-data.table
+  - r-taxize 
+  - bioconductor-ggtree
+  - bioconductor-ggtreeExtra
+  - r-ggplot2
+  - r-optparse

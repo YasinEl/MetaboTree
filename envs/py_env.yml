@@ -1,0 +1,12 @@
+name: tree_processing_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.8
+  - pandas
+  - ete3
+  - pip
+  - pip:
+      - rpy2 # Optional, only if you need to run R scripts from Python
