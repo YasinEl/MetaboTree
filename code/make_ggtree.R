@@ -3,8 +3,10 @@ library(optparse)
 library(ggtree)
 library(data.table)
 library(ggplot2)
-
-
+library(ggtreeExtra)
+library(treeio)
+library(ape)
+library(ggnewscale)
 
 classify_taxa <- function(taxa_vector) {
   # Check each category with their respective patterns
@@ -124,7 +126,7 @@ classify_taxa_detailed <- function(taxa_vector) {
 option_list <- list(
   make_option(c("-i", "--input_tree"), type="character", default=NULL, help="Input Newick file path", metavar="character"),
   make_option(c("-l", "--input_lib"), type="character", default=NULL, help="Input library file path", metavar="character"),
-  make_option(c("-lin", "--input_lin"), type="character", default=NULL, help="Input linage file path", metavar="character"),
+  make_option(c("-n", "--input_lin"), type="character", default=NULL, help="Input linage file path", metavar="character"),
   make_option(c("-r", "--input_redu"), type="character", default=NULL, help="Input REDU file path", metavar="character"),
   make_option(c("-o", "--output_png"), type="character", default="tree.png", help="Output PNG file path", metavar="character")
 )
@@ -136,7 +138,7 @@ args <- parse_args(OptionParser(option_list=option_list))
 tree <- read.newick(args$input_tree)
 
 # Load data tables
-dt_library <- fread(args$input_lib)
+dt_annotations <- fread(args$input_lib)
 dt_redu <- fread(args$input_redu)
 dt_redu <- dt_redu[grepl('|', NCBITaxonomy, fixed = TRUE)]
 dt_redu[, ncbiid := strsplit(unique(NCBITaxonomy), '|', fixed = TRUE)[[1]][1], by = .(NCBITaxonomy)]
@@ -297,9 +299,13 @@ ggtree(tree, layout='circular', size=0.15, open.angle=5) +
     "MetaboLights" = "#586e75"           # Brownish-orange, reminiscent of soil and roots
   )) +
   new_scale_fill() +
-  geom_fruit(data = dt_library, geom=geom_tile,
-        mapping=aes(y=ID, x = molecule, fill=fill),
-        pwidth = 1)
+  geom_fruit(data=dt_annotations, geom=geom_bar,
+            mapping=aes(y=ID, x=p_detected),
+            width = 1,
+            pwidth=0.5, 
+            orientation="y", 
+            stat="identity"
+            )
 
 
 ggsave(args$output_png, plot = p_t, width = 10, height = 8, dpi = 300)

@@ -90,7 +90,7 @@ process VisualizeTreeData {
 
     script:
     """
-    Rscript $TOOL_FOLDER/your_script.R  \
+    Rscript $TOOL_FOLDER/make_ggtree.R  \
     --input_tree $input_tree \
     --input_lib $input_lib \
     --input_redu $input_redu \
