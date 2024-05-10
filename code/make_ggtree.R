@@ -48,54 +48,62 @@ classify_taxa_detailed <- function(taxa_vector) {
       return("Caryophyllales")
     } else if (any(grepl("Solanales", taxa_vector, ignore.case = TRUE))) {
       return("Solanales")
+    } else if (any(grepl("Sordariomycetes", taxa_vector, ignore.case = TRUE))) {
+      return("Sordariomycetes")
     } else {
       return("Other")
     }
     # Fungi categories
-  } else if (any(grepl("Fungi", taxa_vector, ignore.case = TRUE))) {
-    return("Fungi")
+  } else if (any(grepl("Dikarya", taxa_vector, ignore.case = TRUE))) {
+    return("Dikarya")
+  } else if (any(grepl("Ascomycota", taxa_vector, ignore.case = TRUE))) {
+    return("Ascomycota")
+
+
+
+    
     # Animal categories
   } else if (any(grepl("Animalia|Metazoa", taxa_vector, ignore.case = TRUE))) {
     if (any(grepl("Mammalia", taxa_vector, ignore.case = TRUE))) {
       return("Mammal")
     } else if (any(grepl("Aves", taxa_vector, ignore.case = TRUE))) {
       return("Bird")
-    } else if (any(grepl("Tunicata", taxa_vector, ignore.case = TRUE))) {
-      return("Invertebrate")
-    } else if (any(grepl("Reptilia", taxa_vector, ignore.case = TRUE))) {
+    # } else if (any(grepl("Tunicata", taxa_vector, ignore.case = TRUE))) {
+    #   return("Invertebrate")
+    } else if (any(grepl("Reptilia|Serpentes", taxa_vector, ignore.case = TRUE))) {
       return("Reptile")
     } else if (any(grepl("Amphibia|Anura|Caudata|Gymnophiona", taxa_vector, ignore.case = TRUE))) {
       return("Amphibian")
     } else if (any(grepl("Pisces|Fish|Chondrichthyes|Osteichthyes|Actinopterygii|Sarcopterygii", taxa_vector, ignore.case = TRUE))) {
       return("Fish")
-    } else if (any(grepl("Echinodermata|Echinacea|Echinidea|Echinoidea|Euechinoidea", taxa_vector, ignore.case = TRUE))) {
-      return("Echinoderm")
-    } else if (any(grepl("Nematoda|Anisakidae|Ascaridoidea|Ascaridomorpha", taxa_vector, ignore.case = TRUE))) {
-      return("Nematode")
-    } else if (any(grepl("Cnidaria|Alcyonium|Plexaura", taxa_vector, ignore.case = TRUE))) {
-      return("Cnidarian")
-    } else if (any(grepl("Annelida|Parechinidae|Polychaeta|Terebellida|Terebellidae|Terebelliformia", taxa_vector, ignore.case = TRUE))) {
-      return("Annelid")
-    } else if (any(grepl("Insecta", taxa_vector, ignore.case = TRUE))) {
-      return("Insect")
-    } else if (any(grepl("Crustacea", taxa_vector, ignore.case = TRUE))) {
-      return("Crustacean")
-    } else if (any(grepl("Mollusca", taxa_vector, ignore.case = TRUE))) {
-      return("Mollusk")
-    } else if (any(grepl("Arachnida", taxa_vector, ignore.case = TRUE))) {
-      return("Arachnid")
-    } else if (any(grepl("Chondrichthyes", taxa_vector, ignore.case = TRUE))) {
-      return("Cartilaginous Fish")
-    } else if (any(grepl("Actinopterygii", taxa_vector, ignore.case = TRUE))) {
-      return("Ray-finned Fish")
-    } else if (any(grepl("Serpentes", taxa_vector, ignore.case = TRUE))) {
-      return("Snake")
-    } else if (any(grepl("Porifera", taxa_vector, ignore.case = TRUE))) {
-      return("Sponge")
-    } else if (any(grepl("Cephalopoda", taxa_vector, ignore.case = TRUE))) {
-      return("Cephalopod")
-    } else if (any(grepl("Gastropoda", taxa_vector, ignore.case = TRUE))) {
-      return("Gastropod")
+   # } else if (any(grepl("Echinodermata|Echinacea|Echinidea|Echinoidea|Euechinoidea", taxa_vector, ignore.case = TRUE))) {
+   #   return("Echinoderm")
+   # } else if (any(grepl("Nematoda|Anisakidae|Ascaridoidea|Ascaridomorpha", taxa_vector, ignore.case = TRUE))) {
+   #   return("Nematode")
+   # } else if (any(grepl("Cnidaria|Alcyonium|Plexaura", taxa_vector, ignore.case = TRUE))) {
+   #   return("Cnidarian")
+   # } else if (any(grepl("Annelida|Parechinidae|Polychaeta|Terebellida|Terebellidae|Terebelliformia", taxa_vector, ignore.case = TRUE))) {
+   #   return("Annelid")
+    #} else if (any(grepl("Insecta", taxa_vector, ignore.case = TRUE))) {
+    #  return("Insect")
+    #} else if (any(grepl("Crustacea", taxa_vector, ignore.case = TRUE))) {
+    #  return("Crustacean")
+    #} else if (any(grepl("Mollusca", taxa_vector, ignore.case = TRUE))) {
+    #  return("Mollusk")
+    #} else if (any(grepl("Arachnida", taxa_vector, ignore.case = TRUE))) {
+    #  return("Arachnid")
+    # } else if (any(grepl("Chondrichthyes", taxa_vector, ignore.case = TRUE))) {
+    # #   return("Cartilaginous Fish")
+    # } else if (any(grepl("Actinopterygii", taxa_vector, ignore.case = TRUE))) {
+    #   return("Ray-finned Fish")
+    # } else if (any(grepl("Serpentes", taxa_vector, ignore.case = TRUE))) {
+    #   return("Snake")
+    #} else if (any(grepl("Porifera", taxa_vector, ignore.case = TRUE))) {
+    #  return("Sponge")
+    #} else if (any(grepl("Cephalopoda", taxa_vector, ignore.case = TRUE))) {
+    #  return("Cephalopod")
+    #} else if (any(grepl("Gastropoda", taxa_vector, ignore.case = TRUE))) {
+    #  return("Gastropod")
     } else {
       return("Other")
     }
@@ -103,12 +111,18 @@ classify_taxa_detailed <- function(taxa_vector) {
   } else if (any(grepl("Bacteria", taxa_vector, ignore.case = TRUE))) {
     if (any(grepl("Proteobacteria", taxa_vector, ignore.case = TRUE))) {
       return("Proteobacteria")
+    } else if (any(grepl("Streptomyces", taxa_vector, ignore.case = TRUE))) {
+      return("Streptomyces")
     } else if (any(grepl("Firmicutes", taxa_vector, ignore.case = TRUE))) {
       return("Firmicutes")
     } else if (any(grepl("Actinobacteria", taxa_vector, ignore.case = TRUE))) {
       return("Actinobacteria")
     } else if (any(grepl("Cyanobacteria", taxa_vector, ignore.case = TRUE))) {
       return("Cyanobacteria")
+    } else if (any(grepl("Actinomycetota", taxa_vector, ignore.case = TRUE))) {
+      return("Actinomycetota")
+
+      
     } else {
       return("Other")
     }
@@ -270,7 +284,9 @@ ggtree(tree, layout='circular', size=0.15, open.angle=5) +
       "Caryophyllales" = "#EE82EE",      # Violet: vibrant and varied
       "Poales" = "#48D1CC",              # Medium Turquoise: grassy and widespread
       "Other" = "#C0C0C0",               # Silver: neutral for unspecified categories
-      "Archaea" = "#87CEFA"              # Light Sky Blue: ancient and fundamental
+      "Archaea" = "#87CEFA",              # Light Sky Blue: ancient and fundamental
+      "Streptomyces" = "#A52A2D",
+      "Actinomycetota" = "#48D1CC"
     )
     
   ) +
@@ -305,7 +321,14 @@ ggtree(tree, layout='circular', size=0.15, open.angle=5) +
             pwidth=0.5, 
             orientation="y", 
             stat="identity"
-            )
+            ) +
+  guides(
+    fill=guide_legend(ncol=1, title="Legend"),
+    fill.1=guide_legend(ncol=1, title="Superclass"),
+    fill.2=guide_legend(ncol=1, title="Tissue Type"),
+    fill.3=guide_legend(ncol=2, title="Data Source"),
+    fill.4=guide_legend(ncol=1, title="Annotations")
+  )
 
 
 ggsave(args$output_png, plot = p_t, width = 10, height = 8, dpi = 300)

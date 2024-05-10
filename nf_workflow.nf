@@ -4,8 +4,20 @@ nextflow.enable.dsl=2
 TOOL_FOLDER = "$baseDir/code"
 DATA_FOLDER = "$baseDir/data"
 
-
+// param for local masst results
 params.MASST_input = "$DATA_FOLDER/CCMSLIB00005465843_c27ol.csv"
+
+
+// params to request masst results via usi
+params.usi = "mzspec:GNPS:GNPS-LIBRARY:accession:CCMSLIB00006116693"
+params.precursor_mz_tol = 0.05
+params.mz_tol = 0.05
+params.min_cos = 0.6
+params.analog = false
+params.analog_mass_below = 130
+params.analog_mass_above = 200
+params.database = "gnpsdata_index"
+
 
 
 process DownloadData {
@@ -99,10 +111,31 @@ process VisualizeTreeData {
     """
 }
 
+
+process RunFastMASST {
+
+    cache false
+
+
+    input:
+    val usi
+
+    output:
+    path "masst_results.json"
+    path "masst_results.csv"
+
+    script:
+    """
+     python $TOOL_FOLDER/fast_search.py "$usi" --precursor_mz_tol $params.precursor_mz_tol --mz_tol $params.mz_tol --min_cos $params.min_cos ${params.analog ? '--analog' : ''} --analog_mass_below $params.analog_mass_below --analog_mass_above $params.analog_mass_above --database $params.database
+    """
+}
+
+
 workflow {
     redu = DownloadData()
     ncbi_linage = RequestNCBIlinages(redu)
     (tree_json, tree_nerwik) = CreateTaxTree(ncbi_linage)
-    masst_input = ProcessMASSTResults(redu, params.MASST_input)
+    (masst_response_json, masst_response_csv) = RunFastMASST(params.usi)
+    masst_input = ProcessMASSTResults(redu, masst_response_csv)
     VisualizeTreeData(tree_nerwik, masst_input, ncbi_linage, redu)
 }
