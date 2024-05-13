@@ -7,6 +7,8 @@ dependencies:
   - python=3.8
   - pandas
   - ete3
+  - biopython
   - pip
   - pip:
-      - rpy2 # Optional, only if you need to run R scripts from Python
+      - rpy2
+      - rdkit

@@ -44,24 +44,36 @@ classify_taxa_detailed <- function(taxa_vector) {
       return("Sapindales")
     } else if (any(grepl("Poales", taxa_vector, ignore.case = TRUE))) {
       return("Poales")
+    } else if (any(grepl("Rosales", taxa_vector, ignore.case = TRUE))) {
+      return("Rosales")
+    } else if (any(grepl("Malvales", taxa_vector, ignore.case = TRUE))) {
+      return("Malvales")
     } else if (any(grepl("Caryophyllales", taxa_vector, ignore.case = TRUE))) {
       return("Caryophyllales")
     } else if (any(grepl("Solanales", taxa_vector, ignore.case = TRUE))) {
       return("Solanales")
-    } else if (any(grepl("Sordariomycetes", taxa_vector, ignore.case = TRUE))) {
-      return("Sordariomycetes")
+    } else if (any(grepl("Asparagales", taxa_vector, ignore.case = TRUE))) {
+      return("Asparagales")
+    } else if (any(grepl("Cytophagales", taxa_vector, ignore.case = TRUE))) {
+      return("Cytophagales")
+    } else if (any(grepl("Bryophyte", taxa_vector, ignore.case = TRUE))) {
+      return("Bryophyte")
+    } else if (any(grepl("Ranunculales", taxa_vector, ignore.case = TRUE))) {
+      return("Ranunculales")     
     } else {
       return("Other")
     }
     # Fungi categories
-  } else if (any(grepl("Dikarya", taxa_vector, ignore.case = TRUE))) {
-    return("Dikarya")
-  } else if (any(grepl("Ascomycota", taxa_vector, ignore.case = TRUE))) {
-    return("Ascomycota")
-
-
-
+  } else if (any(grepl("Xylariales", taxa_vector, ignore.case = TRUE))) {
+    return("Xylariales")
+  } else if (any(grepl("Helotiales", taxa_vector, ignore.case = TRUE))) {
+    return("Helotiales")
+  } else if (any(grepl("Hypocreales", taxa_vector, ignore.case = TRUE))) {
+    return("Hypocreales")
+  } else if (any(grepl("Polyporales", taxa_vector, ignore.case = TRUE))) {
+    return("Polyporales")
     
+
     # Animal categories
   } else if (any(grepl("Animalia|Metazoa", taxa_vector, ignore.case = TRUE))) {
     if (any(grepl("Mammalia", taxa_vector, ignore.case = TRUE))) {
@@ -76,51 +88,28 @@ classify_taxa_detailed <- function(taxa_vector) {
       return("Amphibian")
     } else if (any(grepl("Pisces|Fish|Chondrichthyes|Osteichthyes|Actinopterygii|Sarcopterygii", taxa_vector, ignore.case = TRUE))) {
       return("Fish")
-   # } else if (any(grepl("Echinodermata|Echinacea|Echinidea|Echinoidea|Euechinoidea", taxa_vector, ignore.case = TRUE))) {
-   #   return("Echinoderm")
-   # } else if (any(grepl("Nematoda|Anisakidae|Ascaridoidea|Ascaridomorpha", taxa_vector, ignore.case = TRUE))) {
-   #   return("Nematode")
-   # } else if (any(grepl("Cnidaria|Alcyonium|Plexaura", taxa_vector, ignore.case = TRUE))) {
-   #   return("Cnidarian")
-   # } else if (any(grepl("Annelida|Parechinidae|Polychaeta|Terebellida|Terebellidae|Terebelliformia", taxa_vector, ignore.case = TRUE))) {
-   #   return("Annelid")
-    #} else if (any(grepl("Insecta", taxa_vector, ignore.case = TRUE))) {
-    #  return("Insect")
-    #} else if (any(grepl("Crustacea", taxa_vector, ignore.case = TRUE))) {
-    #  return("Crustacean")
-    #} else if (any(grepl("Mollusca", taxa_vector, ignore.case = TRUE))) {
-    #  return("Mollusk")
-    #} else if (any(grepl("Arachnida", taxa_vector, ignore.case = TRUE))) {
-    #  return("Arachnid")
-    # } else if (any(grepl("Chondrichthyes", taxa_vector, ignore.case = TRUE))) {
-    # #   return("Cartilaginous Fish")
-    # } else if (any(grepl("Actinopterygii", taxa_vector, ignore.case = TRUE))) {
-    #   return("Ray-finned Fish")
-    # } else if (any(grepl("Serpentes", taxa_vector, ignore.case = TRUE))) {
-    #   return("Snake")
-    #} else if (any(grepl("Porifera", taxa_vector, ignore.case = TRUE))) {
-    #  return("Sponge")
-    #} else if (any(grepl("Cephalopoda", taxa_vector, ignore.case = TRUE))) {
-    #  return("Cephalopod")
-    #} else if (any(grepl("Gastropoda", taxa_vector, ignore.case = TRUE))) {
-    #  return("Gastropod")
+    } else if (any(grepl("Opisthokonta", taxa_vector, ignore.case = TRUE))) {
+      return("Opisthokonta")
+
+
+      
     } else {
       return("Other")
     }
     # Bacteria categories
   } else if (any(grepl("Bacteria", taxa_vector, ignore.case = TRUE))) {
-    if (any(grepl("Proteobacteria", taxa_vector, ignore.case = TRUE))) {
-      return("Proteobacteria")
-    } else if (any(grepl("Streptomyces", taxa_vector, ignore.case = TRUE))) {
-      return("Streptomyces")
-    } else if (any(grepl("Firmicutes", taxa_vector, ignore.case = TRUE))) {
-      return("Firmicutes")
-    } else if (any(grepl("Actinobacteria", taxa_vector, ignore.case = TRUE))) {
-      return("Actinobacteria")
-    } else if (any(grepl("Cyanobacteria", taxa_vector, ignore.case = TRUE))) {
-      return("Cyanobacteria")
+    if (any(grepl("Pseudomonadota", taxa_vector, ignore.case = TRUE))) {
+      return("Pseudomonadota")
     } else if (any(grepl("Actinomycetota", taxa_vector, ignore.case = TRUE))) {
       return("Actinomycetota")
+    } else if (any(grepl("Bacillota", taxa_vector, ignore.case = TRUE))) {
+      return("Bacillota")
+    # } else if (any(grepl("Actinobacteria", taxa_vector, ignore.case = TRUE))) {
+    #   return("Actinobacteria")
+    } else if (any(grepl("Cyanobacteria", taxa_vector, ignore.case = TRUE))) {
+      return("Cyanobacteria")
+    } else if (any(grepl("Streptomyces", taxa_vector, ignore.case = TRUE))) {
+      return("Streptomyces")
 
       
     } else {
@@ -142,6 +131,8 @@ option_list <- list(
   make_option(c("-l", "--input_lib"), type="character", default=NULL, help="Input library file path", metavar="character"),
   make_option(c("-n", "--input_lin"), type="character", default=NULL, help="Input linage file path", metavar="character"),
   make_option(c("-r", "--input_redu"), type="character", default=NULL, help="Input REDU file path", metavar="character"),
+  make_option(c("-s", "--input_sparql"), type="character", default=NULL, help="Sparql results file path", metavar="character"),
+  make_option(c("-b", "--input_ncbi"), type="character", default=NULL, help="NCBI results file path", metavar="character"),
   make_option(c("-o", "--output_png"), type="character", default="tree.png", help="Output PNG file path", metavar="character")
 )
 
@@ -153,6 +144,12 @@ tree <- read.newick(args$input_tree)
 
 # Load data tables
 dt_annotations <- fread(args$input_lib)
+if(nrow(dt_annotations) > 0){
+dt_annotations[, ID := as.character(ID)]
+} else{
+  dt_annotations = data.table(ID = c(),p_detected = c())
+}
+
 dt_redu <- fread(args$input_redu)
 dt_redu <- dt_redu[grepl('|', NCBITaxonomy, fixed = TRUE)]
 dt_redu[, ncbiid := strsplit(unique(NCBITaxonomy), '|', fixed = TRUE)[[1]][1], by = .(NCBITaxonomy)]
@@ -187,6 +184,9 @@ dt_redu_linages = dt_redu_linages[ID %in% dt_ring_superclass$ID]
 dt_ring_superclass = dt_redu_linages[dt_ring_superclass, on =.(ID)]
 
 
+check_op = dt_ring_superclass[dt_ring_kingdom, on =.(ID)]
+fwrite(check_op, 'check_this.csv')
+
 dt_ring_tissue = data.table(ID = tree$tip.label)
 
 
@@ -217,11 +217,17 @@ dt_redu[n_bodyparts == 2, tissue_type := {
 
 
 dt_bodypart = unique(dt_redu[, c('ID', 'tissue_type')])
+dt_bodypart[tissue_type != 'gallbladder', tissue_type := 'Other']
 
 
 dt_ring_tissue = dt_bodypart[dt_ring_tissue, on =.(ID)]
 
+if(nrow(dt_annotations) > 0){
+dt_annotations = dt_bodypart[dt_annotations, on =.(ID)]
+}
 
+
+print(dt_annotations)
 
 #source
 dt_redu = fread(args$input_redu)
@@ -233,8 +239,35 @@ dtDataSource = dt_redu[, .(DataSource = ifelse(length(unique(DataSource)) > 1, '
 
 
 
+dt_sparql = fread(args$input_sparql)
+if(nrow(dt_sparql) > 0) {
+dt_sparql[, ID := as.character(ID)]
+dt_sparql[, node := ID]
+dt_sparql = dt_sparql[, c('node', 'present')]
+dt_sparql[, node := as.integer(node)]
+dt_sparql[, x_val := 1]
+}
+
+
+
+
+
+dt_ncbi = fread(args$input_ncbi)
+if(nrow(dt_ncbi) > 0){
+dt_ncbi[, ID := as.character(ID)]
+dt_ncbi[, node := ID]
+dt_ncbi = dt_ncbi[, c('node', 'present')]
+dt_ncbi[, node := as.integer(node)]
+dt_ncbi[, x_val := 1]
+}
+
+
+
+
+
+
 p_t = 
-ggtree(tree, layout='circular', size=0.15, open.angle=5) +
+ggtree(tree, layout='circular', size=0.15, open.angle=5) + 
   geom_fruit(data=dt_ring_kingdom, geom=geom_tile,
              mapping=aes(y=ID,  fill=kingdom),
              pwidth = 1)  +
@@ -251,16 +284,14 @@ ggtree(tree, layout='circular', size=0.15, open.angle=5) +
              mapping=aes(y=ID,  fill=superclass),
              pwidth = 1) +
   scale_fill_manual(values=
-    category_colors <- c(
-      "Other Bacteria" = "#C0C0C0",      # Light Steel Blue: neutral for miscellaneous bacteria
+    category_colors <- c(     
       "Proteobacteria" = "#8A2BE2",      # Blue Violet: vibrant for diverse bacteria group
-      "Firmicutes" = "#DEB887",          # Burly Wood: earthy tone for robust bacteria
-      "Actinobacteria" = "#A52A2A",      # Brown: earthy, representing soil habitats
+      "Pseudomonadota" = "#DEB887",          # Burly Wood: earthy tone for robust bacteria
+      "Actinomycetota" = "#A52A2A",      # Brown: earthy, representing soil habitats
       "Fish" = "#4682B4",                # Steel Blue: aquatic color, typical for fish
       "Mammal" = "#A52A2D",              # Sienna: robust and earthy
       "Bird" = "#F0E68C",                # Khaki: airy and light, like feathers
-      "Amphibian" = "#556B2F",           # Dark Olive Green: wetland habitats
-      "Other Animal" = "#C0C0C0",        # Pink: light and varied for miscellaneous animals
+      "Amphibian" = "#556B2F",           # Pink: light and varied for miscellaneous animals
       "Invertebrate" = "#FFD700",        # Gold: diverse and fascinating
       "Echinoderm" = "#FF6347",          # Tomato: vibrant, oceanic organisms
       "Crustacean" = "#FA8072",          # Salmon: related to their often reddish hue
@@ -271,14 +302,12 @@ ggtree(tree, layout='circular', size=0.15, open.angle=5) +
       "Annelid" = "#9932CC",             # Dark Orchid: earthy and underexplored
       "Cnidarian" = "#1E90FF",           # Dodger Blue: oceanic and vibrant
       "Sponge" = "#9ACD32",              # Yellow Green: simple, foundational marine life
-      "Fungi" = "#DAA520",               # Golden Rod: earthy and fungal
-      "Other Plant" = "#C0C0C0",         # Sea Green: generic vibrant plant color
+      "Bacillota" = "#DAA520",               # Sea Green: generic vibrant plant color
       "Sapindales" = "#FF4500",          # Orange Red: vibrant, lively plant group
       "Malpighiales" = "#3CB371",        # Medium Sea Green: lush, leafy
       "Fabales" = "#20B2AA",             # Light Sea Green: fresh, leguminous
       "Rosales" = "#DB7093",             # Pale Violet Red: floral and delicate
-      "Asterales" = "#6A5ACD",           # Slate Blue: diverse and widespread
-      "Solanales" = "#FFD700",           # Gold: bright and impactful
+      "Actinobacteria" = "#6A5ACD",           # Gold: bright and impactful
       "Lamiales" = "#9ACD32",            # Yellow Green: common, everyday flora
       "Gentianales" = "#40E0D0",         # Turquoise: medicinal and tropical
       "Caryophyllales" = "#EE82EE",      # Violet: vibrant and varied
@@ -286,14 +315,77 @@ ggtree(tree, layout='circular', size=0.15, open.angle=5) +
       "Other" = "#C0C0C0",               # Silver: neutral for unspecified categories
       "Archaea" = "#87CEFA",              # Light Sky Blue: ancient and fundamental
       "Streptomyces" = "#A52A2D",
-      "Actinomycetota" = "#48D1CC"
+      "Actinomycetota" = "#48D1CC",
+      "Eurotiomycetidae" = "#1E90FF",
+      "Cyanobacteria" = "#C0C0C0",
+      "Streptomyces" = "#DAA520",
+      "Asparagales" = "#4682B4",
+      "Malvales" = "#FFD700",
+#Plant          
+      "Solanales" = "#FFD700", 
+      "Apiales" = "#FA8072",
+      "Ranunculales" = "#40E0D0",
+#Fungi
+      "Xylariales" = "#FFD700",
+      "Helotiales" = "#FA8072",
+#Animal
+      "Reptile" = "#3CB371",
+      "Opisthokonta" = "#9ACD32"
     )
-    
+
   ) +
-  new_scale_fill() +
-  geom_fruit(data=dt_ring_tissue, geom=geom_tile,
-             mapping=aes(y=ID, fill=tissue_type),
-             pwidth = 1) +
+  # new_scale_fill() +
+  # geom_fruit(data=dt_ring_tissue, geom=geom_tile,
+  #            mapping=aes(y=ID, fill=tissue_type),
+  #            pwidth = 1) +
+  # scale_fill_manual(values = c(
+  #   "multiple" = "#6c71c4",        # A cool lavender color, suggests variety
+  #   "rare bodypart" = "#cb4b16",   # A bold red-orange, indicating rarity
+  #   "missing value" = "#93a1a1",   # Grey, often used for missing or unavailable data
+  #   "feces" = "#586e75",           # Dark slate, earthy and organic
+  #   "gallbladder" = "#b58900",     # A deep yellow, reflective of bile
+  #   "digestive tract" = "#dc322f", # Red, associated with the internal organ color
+  #   "leaf" = "#859900",            # A vibrant green, typical for leaves
+  #   "root" = "#b15928"             # Brownish-orange, reminiscent of soil and roots
+  # )) +
+  # new_scale_fill() +
+  # geom_fruit(data=dtDataSource, geom=geom_tile,
+  #            mapping=aes(y=ID, fill=DataSource),
+  #            pwidth = 1) +
+  # scale_fill_manual(values = c(
+  #   "multiple" = "#6c71c4",        # A cool lavender color, suggests variety
+  #   "GNPS" = "#cb4b16",   # A bold red-orange, indicating rarity
+  #   "Workbench" = "#FFD700",   # Grey, often used for missing or unavailable data
+  #   "MetaboLights" = "#586e75"           # Brownish-orange, reminiscent of soil and roots
+  # )) +
+  new_scale_fill() 
+
+
+if(nrow(dt_sparql) > 0){
+
+  p_t = p_t + geom_fruit(data=dt_sparql, geom_point,
+  mapping=aes(y=node), size=1, alpha=0.5, color = 'red') +
+  new_scale_fill()
+
+}
+
+if(nrow(dt_ncbi) > 0){
+
+  p_t = p_t + geom_fruit(data=dt_ncbi, geom_point,
+  mapping=aes(y=node), size=1, alpha=0.5, color = 'green') +
+  new_scale_fill()
+
+}
+
+if(nrow(dt_annotations) > 0){
+  p_t = 
+  p_t + geom_fruit(data=dt_annotations, geom=geom_bar,
+            mapping=aes(y=ID, x=p_detected, fill = tissue_type),
+            width = 1,
+            pwidth=0.5, 
+            orientation="y", 
+            stat="identity"
+            ) +
   scale_fill_manual(values = c(
     "multiple" = "#6c71c4",        # A cool lavender color, suggests variety
     "rare bodypart" = "#cb4b16",   # A bold red-orange, indicating rarity
@@ -302,33 +394,23 @@ ggtree(tree, layout='circular', size=0.15, open.angle=5) +
     "gallbladder" = "#b58900",     # A deep yellow, reflective of bile
     "digestive tract" = "#dc322f", # Red, associated with the internal organ color
     "leaf" = "#859900",            # A vibrant green, typical for leaves
-    "root" = "#b15928"             # Brownish-orange, reminiscent of soil and roots
-  )) +
-  new_scale_fill() +
-  geom_fruit(data=dtDataSource, geom=geom_tile,
-             mapping=aes(y=ID, fill=DataSource),
-             pwidth = 1) +
-  scale_fill_manual(values = c(
-    "multiple" = "#6c71c4",        # A cool lavender color, suggests variety
-    "GNPS" = "#cb4b16",   # A bold red-orange, indicating rarity
-    "Workbench" = "#FFD700",   # Grey, often used for missing or unavailable data
-    "MetaboLights" = "#586e75"           # Brownish-orange, reminiscent of soil and roots
-  )) +
-  new_scale_fill() +
-  geom_fruit(data=dt_annotations, geom=geom_bar,
-            mapping=aes(y=ID, x=p_detected),
-            width = 1,
-            pwidth=0.5, 
-            orientation="y", 
-            stat="identity"
-            ) +
-  guides(
-    fill=guide_legend(ncol=1, title="Legend"),
-    fill.1=guide_legend(ncol=1, title="Superclass"),
-    fill.2=guide_legend(ncol=1, title="Tissue Type"),
-    fill.3=guide_legend(ncol=2, title="Data Source"),
-    fill.4=guide_legend(ncol=1, title="Annotations")
-  )
+    "root" = "#b15928",             # Brownish-orange, reminiscent of soil and roots
+    "Other" = "#87CEFA"            
+  )) #+
+  # guides(
+  #   fill=guide_legend(ncol=1, title="Legend"),
+  #   fill.1=guide_legend(ncol=1, title="Superclass"),
+  #   fill.2=guide_legend(ncol=1, title="Tissue Type"),
+  #   fill.3=guide_legend(ncol=2, title="Data Source"),
+  #   fill.4=guide_legend(ncol=1, title="Annotations")
+  # )
+
+
+}
+
+
+# p_t = p_t %<+% geom_nodepoint(dt_sparql, aes(subset=node))
+
 
 
 ggsave(args$output_png, plot = p_t, width = 10, height = 8, dpi = 300)

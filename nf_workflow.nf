@@ -4,9 +4,21 @@ nextflow.enable.dsl=2
 TOOL_FOLDER = "$baseDir/code"
 DATA_FOLDER = "$baseDir/data"
 
-// param for local masst results
-params.MASST_input = "$DATA_FOLDER/CCMSLIB00005465843_c27ol.csv"
 
+// keys
+params.email = "$baseDir/keys/email.txt"
+params.entrez_key = "$baseDir/keys/entrez_key.txt"
+
+
+// param for local masst results
+params.MASST_input = "$DATA_FOLDER/CCMSLIB00000204966_capsacin.csv"
+
+
+// params for tree type 
+params.tree_type = 'treeoflife' //taxonomic
+
+// params for SarQL
+params.pubchemid = "6675"
 
 // params to request masst results via usi
 params.usi = "mzspec:GNPS:GNPS-LIBRARY:accession:CCMSLIB00006116693"
@@ -16,11 +28,12 @@ params.min_cos = 0.6
 params.analog = false
 params.analog_mass_below = 130
 params.analog_mass_above = 200
-params.database = "gnpsdata_index"
 
 
 
 process DownloadData {
+    conda "$baseDir/envs/r_env.yml"
+
     publishDir "./nf_output", mode: 'copy'
 
     output:
@@ -29,6 +42,7 @@ process DownloadData {
     script:
     """
     wget -q -O redu.tsv https://redu.gnps2.org/dump
+    Rscript $TOOL_FOLDER/prepare_redu_table.R redu.tsv
     """
 }
 
@@ -68,7 +82,67 @@ process CreateTaxTree {
     """
 }
 
-process ProcessMASSTResults {
+process Process_MASST_Wikidata_Pubchem_Results {
+    conda "$baseDir/envs/py_env.yml"
+
+    publishDir "./nf_output", mode: 'copy'
+
+    input:
+    path redu_tsv
+    path masst_csv
+    path sparql_csv
+    path ncbi_response_csv
+
+    output:
+    path "masst_by_ncbi_output.tsv"
+    path "sparql_by_ncbi_output.tsv"
+    path "ncbi_by_ncbi_output.tsv"
+
+    script:
+    """
+    python $TOOL_FOLDER/process_masst_wikidata_pubchem_results.py $redu_tsv $masst_csv $sparql_csv $ncbi_response_csv
+    """
+}
+
+process RunFastMASST {
+    cache false
+
+
+    input:
+    val usi
+
+    output:
+    //path "masst_results.json"
+    path "masst_results.csv"
+
+    script:
+    """
+    python $TOOL_FOLDER/fast_search.py "$usi" --precursor_mz_tol $params.precursor_mz_tol --mz_tol $params.mz_tol --min_cos $params.min_cos ${params.analog ? '--analog' : ''} --analog_mass_below $params.analog_mass_below --analog_mass_above $params.analog_mass_above 
+    """
+}
+
+
+process RunWikidataSparql {
+    
+
+    input:
+    path pubchemids
+
+    publishDir "./nf_output", mode: 'copy'
+
+    output:
+    path "sparql_query.csv"
+
+    script:
+    """
+     python $TOOL_FOLDER/make_sparql.py  $pubchemids
+     wikidata-dl sparql_query.sparql
+     mv wikidata/sparql_query.csv sparql_query.csv
+    """
+}
+
+
+process MakeTreeRings {
     conda "$baseDir/envs/r_env.yml"
 
     publishDir "./nf_output", mode: 'copy'
@@ -86,6 +160,28 @@ process ProcessMASSTResults {
     """
 }
 
+process getNCBIRecords {
+    cache false
+
+    conda "$baseDir/envs/py_env.yml"
+
+
+    publishDir "./nf_output", mode: 'copy'
+
+    input:
+    path pubchemids
+
+    output:
+    path "ncbi_records.csv"
+
+    script:
+    """
+    python $TOOL_FOLDER/get_ncbi_records.py $DATA_FOLDER/biosystems_taxonomy $DATA_FOLDER/biosystems_pcsubstance $DATA_FOLDER/names.dmp $pubchemids
+    """
+}
+
+
+
 process VisualizeTreeData {
     conda "$baseDir/envs/r_env.yml" 
 
@@ -96,8 +192,11 @@ process VisualizeTreeData {
     path input_lib
     path input_linage
     path input_redu
+    path input_sparql
+    path input_ncbi
 
     output:
+    path "check_this.csv"
     path "tree.png"
 
     script:
@@ -107,35 +206,140 @@ process VisualizeTreeData {
     --input_lib $input_lib \
     --input_redu $input_redu \
     --input_lin $input_linage \
+    --input_sparql $input_sparql \
+    --input_ncbi $input_ncbi \
     --output_png tree.png
     """
 }
 
 
-process RunFastMASST {
-
-    cache false
-
+process GetStereoCIDs {
+    conda "$baseDir/envs/py_env.yml"
 
     input:
-    val usi
+    val pubchemid
 
     output:
-    path "masst_results.json"
-    path "masst_results.csv"
+    path "stereoisomers.tsv"
 
     script:
     """
-     python $TOOL_FOLDER/fast_search.py "$usi" --precursor_mz_tol $params.precursor_mz_tol --mz_tol $params.mz_tol --min_cos $params.min_cos ${params.analog ? '--analog' : ''} --analog_mass_below $params.analog_mass_below --analog_mass_above $params.analog_mass_above --database $params.database
+     python $TOOL_FOLDER/get_stereo_cids.py  $pubchemid
     """
 }
 
 
+process Request_treeoflife_ids {
+
+    cache false
+
+    conda "$baseDir/envs/py_env.yml"
+
+    publishDir "./nf_output", mode: 'copy'
+
+    input:
+    path input_csv
+
+    output:
+    path "treeoflife_response.json"
+    path "modified_tree_of_life.csv"
+
+    script:
+    """
+    python $TOOL_FOLDER/request_redu_from_tree_of_life.py $input_csv 
+    """
+}
+
+
+process Update_ReDU_df_with_TOL {
+    conda "$baseDir/envs/py_env.yml"
+
+
+    publishDir "./nf_output", mode: 'copy'
+
+    input:
+    path treeoflife_response
+    path redu
+
+    output:
+    path "redu_updated.csv"
+
+    script:
+    """
+    python $TOOL_FOLDER/add_tree_of_life_info_to_redu.py --json_path $treeoflife_response --redu_path $redu
+    """
+}
+
+
+process CreateTOLTree {
+    conda "$baseDir/envs/py_env.yml"
+
+    publishDir "./nf_output", mode: 'copy'
+
+    input:
+    path input_csv
+
+    output:
+    path "tree.nw"
+
+    script:
+    """
+    python $TOOL_FOLDER/create_tree_of_life.py $input_csv $DATA_FOLDER/labelled_supertree.tre
+    """
+}
+
+process Make_ID_table {
+    conda "$baseDir/envs/py_env.yml"
+
+    publishDir "./nf_output", mode: 'copy'
+
+    input:
+    path redu
+    path sparql
+    path ncbi
+
+    output:
+    path "all_organism_table.csv"
+
+    script:
+    """
+    python $TOOL_FOLDER/extend_organsims_from_databases.py $redu $sparql $ncbi
+    """
+}
+
 workflow {
+
+    cids = GetStereoCIDs(params.pubchemid)
+    sparql_response_csv = RunWikidataSparql(cids)
+    ncbi_response_csv = getNCBIRecords(cids)
+
+
     redu = DownloadData()
-    ncbi_linage = RequestNCBIlinages(redu)
-    (tree_json, tree_nerwik) = CreateTaxTree(ncbi_linage)
-    (masst_response_json, masst_response_csv) = RunFastMASST(params.usi)
-    masst_input = ProcessMASSTResults(redu, masst_response_csv)
-    VisualizeTreeData(tree_nerwik, masst_input, ncbi_linage, redu)
+    ncbi_tol_datasource_bodypart = Make_ID_table(redu, sparql_response_csv, ncbi_response_csv)
+
+
+
+    if (params.tree_type == 'taxonomic'){
+        ncbi_linage = RequestNCBIlinages(redu)
+        (tree_json, tree_nerwik) = CreateTaxTree(ncbi_linage)
+    }
+    if (params.tree_type == 'treeoflife'){
+        (ncbi_to_tol, ncbi_tol_datasource_bodypart) = Request_treeoflife_ids(ncbi_tol_datasource_bodypart)
+        ncbi_tol_datasource_bodypart = Update_ReDU_df_with_TOL(ncbi_to_tol, ncbi_tol_datasource_bodypart)
+        tree_nerwik = CreateTOLTree(ncbi_tol_datasource_bodypart)
+    }
+
+
+
+    (masst_response_csv) = RunFastMASST(params.usi)
+    //(kingdom, superclass) = MakeTreeRings(redu)
+
+
+
+
+
+
+    (masst_results, sparql_results, ncbi_results) = Process_MASST_Wikidata_Pubchem_Results(redu, masst_response_csv, sparql_response_csv, ncbi_response_csv)
+//    (masst_results, sparql_results, ncbi_results) = Process_MASST_Wikidata_Pubchem_Results(redu, params.MASST_input, sparql_response_csv, ncbi_response_csv)
+//    VisualizeTreeData(tree_nerwik, masst_results, ncbi_linage, redu, sparql_results, ncbi_results)
 }

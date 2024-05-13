@@ -154,11 +154,11 @@ cython_debug/
 
 
 data/
-
 nf_output/
-
 work/
-
+keys/
+saved_plots/
+envs/condaenv.qwghlqr3.requirements.txt
 .nextflow*
 
 .nextflow
