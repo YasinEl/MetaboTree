@@ -125,6 +125,8 @@ process RunFastMASST {
 
 
 process RunWikidataSparql {
+
+    conda "$baseDir/envs/py_env.yml"
     
 
     input:
@@ -163,10 +165,7 @@ process MakeTreeRings {
 }
 
 process getNCBIRecords {
-    cache false
-
     conda "$baseDir/envs/py_env.yml"
-
 
     publishDir "./nf_output", mode: 'copy'
 
@@ -292,6 +291,8 @@ process CreateTOLTree {
 }
 
 process Make_ID_table {
+
+    cache false
     conda "$baseDir/envs/py_env.yml"
 
     publishDir "./nf_output", mode: 'copy'
