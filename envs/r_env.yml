@@ -5,7 +5,8 @@ channels:
   - defaults
 dependencies:
   - r-base
-  - r-tidyverse # if you use tidyverse in your script
+  - r-essentials
+  - r-tidyverse 
   - r-data.table
   - r-taxize 
   - bioconductor-ggtree

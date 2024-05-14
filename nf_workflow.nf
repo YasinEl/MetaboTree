@@ -18,7 +18,7 @@ params.MASST_input = "$DATA_FOLDER/CCMSLIB00000204966_capsacin.csv"
 params.tree_type = 'treeoflife' //taxonomic
 
 // params for SarQL
-params.pubchemid = "6675"
+params.pubchemid = "6140"
 
 // params to request masst results via usi
 params.usi = "mzspec:GNPS:GNPS-LIBRARY:accession:CCMSLIB00006116693"
@@ -32,7 +32,7 @@ params.analog_mass_above = 200
 
 
 process DownloadData {
-    conda "$baseDir/envs/r_env.yml"
+    conda "$baseDir/envs/py_env.yml"
 
     publishDir "./nf_output", mode: 'copy'
 
@@ -42,7 +42,7 @@ process DownloadData {
     script:
     """
     wget -q -O redu.tsv https://redu.gnps2.org/dump
-    Rscript $TOOL_FOLDER/prepare_redu_table.R redu.tsv
+    python $TOOL_FOLDER/prepare_redu_table.py redu.tsv
     """
 }
 
@@ -105,6 +105,8 @@ process Process_MASST_Wikidata_Pubchem_Results {
 }
 
 process RunFastMASST {
+    conda "$baseDir/envs/py_env.yml"
+    
     cache false
 
 
@@ -176,7 +178,7 @@ process getNCBIRecords {
 
     script:
     """
-    python $TOOL_FOLDER/get_ncbi_records.py $DATA_FOLDER/biosystems_taxonomy $DATA_FOLDER/biosystems_pcsubstance $DATA_FOLDER/names.dmp $pubchemids
+    python $TOOL_FOLDER/get_ncbi_records.py $DATA_FOLDER/biosystems_taxonomy $DATA_FOLDER/biosystems_pcsubstance $pubchemids
     """
 }
 
@@ -224,7 +226,8 @@ process GetStereoCIDs {
 
     script:
     """
-     python $TOOL_FOLDER/get_stereo_cids.py  $pubchemid
+    echo "Getting stereo pubchem IDs"
+    python $TOOL_FOLDER/get_stereo_cids.py  $pubchemid
     """
 }
 
@@ -239,14 +242,14 @@ process Request_treeoflife_ids {
 
     input:
     path input_csv
+    path ncbi_to_ToL_file
 
     output:
-    path "treeoflife_response.json"
     path "modified_tree_of_life.csv"
 
     script:
     """
-    python $TOOL_FOLDER/request_redu_from_tree_of_life.py $input_csv 
+    python $TOOL_FOLDER/request_redu_from_tree_of_life.py $input_csv $ncbi_to_ToL_file
     """
 }
 
@@ -307,7 +310,25 @@ process Make_ID_table {
     """
 }
 
+
+
+process prepare_ncbi_to_ToL_file {
+
+    conda "$baseDir/envs/py_env.yml"
+
+    output:
+    path "NCBI_to_ToL_file.csv"
+
+    script:
+    """
+    python $TOOL_FOLDER/prepare_ncbi_to_ToL_file.py $DATA_FOLDER/taxonomy.tsv
+    """
+}
+
+
 workflow {
+
+
 
     cids = GetStereoCIDs(params.pubchemid)
     sparql_response_csv = RunWikidataSparql(cids)
@@ -315,18 +336,21 @@ workflow {
 
 
     redu = DownloadData()
-    ncbi_tol_datasource_bodypart = Make_ID_table(redu, sparql_response_csv, ncbi_response_csv)
+    redu_w_datasets = Make_ID_table(redu, sparql_response_csv, ncbi_response_csv)
 
 
 
     if (params.tree_type == 'taxonomic'){
-        ncbi_linage = RequestNCBIlinages(redu)
+        ncbi_linage = RequestNCBIlinages(redu_w_datasets)
         (tree_json, tree_nerwik) = CreateTaxTree(ncbi_linage)
     }
     if (params.tree_type == 'treeoflife'){
-        (ncbi_to_tol, ncbi_tol_datasource_bodypart) = Request_treeoflife_ids(ncbi_tol_datasource_bodypart)
-        ncbi_tol_datasource_bodypart = Update_ReDU_df_with_TOL(ncbi_to_tol, ncbi_tol_datasource_bodypart)
-        tree_nerwik = CreateTOLTree(ncbi_tol_datasource_bodypart)
+        // format NCBI -> ToL file
+        ncbi_to_ToL_file = prepare_ncbi_to_ToL_file()
+
+        redu_w_datasets = Request_treeoflife_ids(redu_w_datasets, ncbi_to_ToL_file)
+        // redu_w_datasets = Update_ReDU_df_with_TOL(ncbi_to_tol, redu_w_datasets)
+        tree_nerwik = CreateTOLTree(redu_w_datasets)
     }
 
 
@@ -339,7 +363,7 @@ workflow {
 
 
 
-    (masst_results, sparql_results, ncbi_results) = Process_MASST_Wikidata_Pubchem_Results(redu, masst_response_csv, sparql_response_csv, ncbi_response_csv)
+    // (masst_results, sparql_results, ncbi_results) = Process_MASST_Wikidata_Pubchem_Results(redu, masst_response_csv, sparql_response_csv, ncbi_response_csv)
 //    (masst_results, sparql_results, ncbi_results) = Process_MASST_Wikidata_Pubchem_Results(redu, params.MASST_input, sparql_response_csv, ncbi_response_csv)
 //    VisualizeTreeData(tree_nerwik, masst_results, ncbi_linage, redu, sparql_results, ncbi_results)
 }

@@ -15,8 +15,6 @@ USI2MASST_matchCol <- function(x){
 args <- commandArgs(trailingOnly = TRUE)
 input_redu_path <- args[1]
 input_masst_path <- args[2]
-input_sparql_path <- args[3]
-input_ncbi_path <- args[4]
 
 # # Read and process data
 dt_redu <- fread(input_redu_path)
@@ -36,15 +34,6 @@ dt_masst_results[, ID := as.character(ncbiid)]
 
 
 
-dt_sparql_results = fread(input_sparql_path)
-dt_sparql_results[, ID := as.character(ncbiTaxonomyID)]
-dt_sparql_results = dt_sparql_results[ID %in% unique(dt_redu$ID)]
-dt_sparql_results[, present := TRUE]
-
-dt_ncbi_results = fread(input_ncbi_path)
-dt_ncbi_results[, ID := as.character(ID)]
-dt_ncbi_results = dt_ncbi_results[ID %in% unique(dt_redu$ID)]
-dt_ncbi_results[, present := TRUE]
 
 
 

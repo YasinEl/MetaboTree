@@ -4,8 +4,8 @@ from ete3 import Tree
 
 def load_and_process_data(input_csv):
     """Load the CSV file and process the data to filter and create ott_id_use."""
-    df = pd.read_csv(input_csv, dtype={'OTT_ID': 'Int64'})
-    df = df.dropna(subset=['tax_name', 'OTT_ID'])
+    df = pd.read_csv(input_csv, dtype={'uid': 'Int64'})
+    df = df.dropna(subset=['uid'])
     return df
 
 def load_and_filter_tree(tree_path, ott_ids):
@@ -25,7 +25,7 @@ def save_tree(tree, output_path):
 def main(args):
     # Process data
     df_redu_taxas = load_and_process_data(args.input_csv)
-    unique_ott_ids = df_redu_taxas['ott_id_use'].unique()
+    unique_ott_ids = df_redu_taxas['uid'].unique()
 
     # Load and filter the tree
     tree = load_and_filter_tree(args.tree_path, unique_ott_ids)

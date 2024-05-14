@@ -1,15 +1,19 @@
+print('beginning')
 import argparse
 import requests
 from rdkit import Chem
 import time
+import sys
 
 def fetch_related_cids(cid):
     """Fetch all CIDs related by connectivity to the given CID."""
-    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/cids/JSON?cids_type=same_connectivity"
+    url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/cids/JSON?cids_type=same_isotopes"
+    print("fetching related CIDs")
     try:
         response = requests.get(url)
         response.raise_for_status()  # Raises an HTTPError for bad responses
         data = response.json()
+        print(data)
         return data['IdentifierList']['CID']
     except requests.exceptions.RequestException as e:
         print(f"Error fetching related CIDs: {e}")
@@ -18,7 +22,9 @@ def fetch_related_cids(cid):
 def filter_cids_remove_isotopes(related_cids):
     """Filter out CIDs that contain isotopes in their structure."""
     non_isotope_cids = []
+    i=1
     for cid in related_cids:
+        print(cid)
         time.sleep(0.2)  # Delay to comply with the API rate limit of 5 requests per second
         url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/property/IsomericSMILES/JSON"
         try:
@@ -32,6 +38,8 @@ def filter_cids_remove_isotopes(related_cids):
         except requests.exceptions.RequestException as e:
             print(f"Error processing CID {cid}: {e}")
             continue
+        print(f"{i}/{len(related_cids)}")
+        i=i+1
     return non_isotope_cids
 
 def save_cids_to_tsv(cids, output_file):
@@ -42,9 +50,9 @@ def save_cids_to_tsv(cids, output_file):
 
 def main(cid):
     related_cids = fetch_related_cids(cid)
-    non_isotope_cids = filter_cids_remove_isotopes([cid] + related_cids)
-    save_cids_to_tsv(non_isotope_cids, "stereoisomers.tsv")
-    print(f"Saved {len(non_isotope_cids)} CIDs to stereoisomers.tsv")
+    #non_isotope_cids = filter_cids_remove_isotopes([cid] + related_cids)
+    save_cids_to_tsv(related_cids, "stereoisomers.tsv")
+    print(f"Saved {len(related_cids)} CIDs to stereoisomers.tsv")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Fetch stereoisomer CIDs excluding isotopes.")

@@ -4,11 +4,12 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - python=3.8
+  - python=3
   - pandas
-  - ete3
   - biopython
+  - ete3
+  - requests
   - pip
   - pip:
-      - rpy2
       - rdkit
+      - wikidata-dl
