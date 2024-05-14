@@ -4,17 +4,27 @@ from ete3 import Tree
 
 def load_and_process_data(input_csv):
     """Load the CSV file and process the data to filter and create ott_id_use."""
-    df = pd.read_csv(input_csv, dtype={'uid': 'Int64'})
+    df = pd.read_csv(input_csv, dtype={'uid': 'Int64'}, low_memory=False)
     df = df.dropna(subset=['uid'])
     return df
 
 def load_and_filter_tree(tree_path, ott_ids):
     """Load the tree file and filter it based on OTT IDs."""
     tree = Tree(tree_path, format=1)  # format=1 assumes Newick format
-    print("Available tip labels in the tree:", tree.get_leaf_names())  # Log tree tip labels for debugging
+    # Convert ott_ids to strings for comparison with leaf names
+    ott_ids_str = set(map(str, ott_ids))
+    tree_leaves = set(tree.get_leaf_names())
+
+    print('tree_leaves')
+    print(list(tree_leaves)[1:10])
     # Find which OTT IDs are present in the tree
-    valid_ids = set(ott_ids) & set(tree.get_leaf_names())
-    print("OTT IDs to be kept:", valid_ids)  # Log valid OTT IDs
+    valid_ids = ott_ids_str & tree_leaves
+    invalid_ids = ott_ids_str - tree_leaves
+    if not valid_ids:
+        with open('invalid_ott_ids.txt', 'w') as f:
+            for ott_id in invalid_ids:
+                f.write(f"{ott_id}\n")
+        raise ValueError("No valid OTT IDs found in the tree. Check invalid_ott_ids.txt for the list of invalid OTT IDs.")
     tree.prune(list(valid_ids), preserve_branch_length=True)
     return tree
 
@@ -25,13 +35,15 @@ def save_tree(tree, output_path):
 def main(args):
     # Process data
     df_redu_taxas = load_and_process_data(args.input_csv)
-    unique_ott_ids = df_redu_taxas['uid'].unique()
+    unique_ott_ids = df_redu_taxas['uid_leaf'].dropna().unique()
+    
+    print('unique_ott_ids')
+    print(unique_ott_ids[1:10])
 
     # Load and filter the tree
     tree = load_and_filter_tree(args.tree_path, unique_ott_ids)
 
     # Output the tree and save it
-    # print(tree)
     save_tree(tree, 'tree.nw')
 
 if __name__ == "__main__":

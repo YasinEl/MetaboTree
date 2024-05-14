@@ -10,10 +10,6 @@ def load_data(redu_path, sparql_path, ncbi_path):
     # Convert NCBI column to integer and strip any whitespace
     df_redu['NCBI'] = df_redu['NCBI'].astype(str).str.strip().astype(int)
 
-    # Print debug info
-    print(f"df_redu NCBI unique count: {df_redu['NCBI'].nunique()}")
-    print(f"df_redu NCBI unique values (sample): {df_redu['NCBI'].unique()[:10]}")
-
     # Collect existing NCBI IDs from df_redu
     existing_ncbi_ids = set(df_redu['NCBI'])
     print(f"Existing NCBI IDs in df_redu (sample): {list(existing_ncbi_ids)[:10]}")
@@ -46,33 +42,8 @@ def load_data(redu_path, sparql_path, ncbi_path):
     # Concatenate dataframes
     df_databases = pd.concat([dt_sparql, df_ncbi])
 
-    # Print debug info
-    print(f"df_databases NCBI unique count: {df_databases['NCBI'].nunique()}")
-    print(f"df_databases NCBI unique values (sample): {df_databases['NCBI'].unique()[:10]}")
-    print(df_databases.head())
-
     # Merge df_redu with df_databases to get the Database column
     df_merged = pd.merge(df_redu, df_databases, on='NCBI', how='left', suffixes=('', '_from_db'))
-
-    # Print debug info
-    print(f"df_merged row count: {len(df_merged)}")
-    print(df_merged.head())
-
-    # Check for any unexpected issues in the NCBI columns
-    print("df_redu NCBI values (sample):")
-    print(df_redu['NCBI'].unique()[:10])
-
-    print("df_databases NCBI values (sample):")
-    print(df_databases['NCBI'].unique()[:10])
-
-    print("df_merged NCBI values (sample):")
-    print(df_merged['NCBI'].unique()[:10])
-
-    # Check for rows where Database is not null after the merge
-    non_null_merged = df_merged[df_merged['Database'].notna()]
-    print(f"Non-null merged row count: {len(non_null_merged)}")
-    print(non_null_merged.head())
-
     
 
     # If there are duplicates in df_merged for the same NCBI, combine Database values

@@ -19,6 +19,8 @@ def main(input_file):
 
     df = df[['uid', 'NCBI']]
 
+    df['uid_leaf'] = 'ott' + df['uid'].astype(str)
+
     df = df[df['NCBI'].notna() & df['NCBI'].str.strip().astype(bool)]
     df['NCBI'] = df['NCBI'].astype(int)
 

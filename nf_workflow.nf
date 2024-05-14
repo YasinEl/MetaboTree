@@ -190,11 +190,8 @@ process VisualizeTreeData {
 
     input:
     path input_tree
-    path input_lib
-    path input_linage
+    path input_masst
     path input_redu
-    path input_sparql
-    path input_ncbi
 
     output:
     path "check_this.csv"
@@ -202,13 +199,10 @@ process VisualizeTreeData {
 
     script:
     """
-    Rscript $TOOL_FOLDER/make_ggtree.R  \
+    Rscript $TOOL_FOLDER/make_ggtree_plot.R  \
     --input_tree $input_tree \
-    --input_lib $input_lib \
+    --input_masst $input_masst \
     --input_redu $input_redu \
-    --input_lin $input_linage \
-    --input_sparql $input_sparql \
-    --input_ncbi $input_ncbi \
     --output_png tree.png
     """
 }
@@ -233,7 +227,6 @@ process GetStereoCIDs {
 
 process Request_treeoflife_ids {
 
-    cache false
 
     conda "$baseDir/envs/py_env.yml"
 
@@ -292,7 +285,6 @@ process CreateTOLTree {
 
 process Make_ID_table {
 
-    cache false
     conda "$baseDir/envs/py_env.yml"
 
     publishDir "./nf_output", mode: 'copy'
@@ -360,7 +352,7 @@ workflow {
     //(kingdom, superclass) = MakeTreeRings(redu)
 
 
-
+    VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets)  
 
 
 

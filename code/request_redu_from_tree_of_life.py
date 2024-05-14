@@ -67,7 +67,7 @@ def main(file_path, ncbi_to_ToL_file_path):
     df_ncbi_to_ToL['NCBI'] = df_ncbi_to_ToL['NCBI'].astype(int)
 
 
-    df = df.merge(df_ncbi_to_tol, on='NCBI',  how='left')   
+    df = df.merge(df_ncbi_to_ToL, on='NCBI',  how='left')   
 
 
     # Save the modified DataFrame to a CSV file
