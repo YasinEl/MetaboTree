@@ -7,6 +7,8 @@ library(ggtreeExtra)
 library(treeio)
 library(ape)
 library(ggnewscale)
+library(grid)
+library(magick)
 library(stringr)
 #library(phytools)
 
@@ -19,7 +21,24 @@ USI2MASST_matchCol <- function(x) {
   return(paste(mzspec, msvid, filename, sep = ":"))
 }
 
-
+save_plot_with_svg <- function(plot, svg_grob, filename) {
+  # Open a graphics device
+  png(filename, width = 2400, height = 1800, res = 300)
+  
+  # Print the ggplot
+  print(plot)
+  
+  # Create a viewport for the subplot in the upper right corner
+  vp <- viewport(width = 0.5, height = 0.5, x = 1, y = 0.9)
+  
+  # Overlay the SVG subplot
+  pushViewport(vp)
+  grid.draw(svg_grob)
+  popViewport()
+  
+  # Close the graphics device
+  dev.off()
+}
 
 
 # Setup command-line options
@@ -27,6 +46,7 @@ option_list <- list(
   make_option(c("-i", "--input_tree"), type="character", default=NULL, help="Input Newick file path", metavar="character"),
   make_option(c("-l", "--input_masst"), type="character", default=NULL, help="Input library file path", metavar="character"),
   make_option(c("-r", "--input_redu"), type="character", default=NULL, help="Input REDU file path", metavar="character"),
+  make_option(c("-m", "--mol_plot"), type="character", default=NULL, help="Molecule svg", metavar="character"),
   make_option(c("-u", "--usi"), type="character", default=NULL, help="USI", metavar="character"),
   make_option(c("-p", "--cid"), type="character", default=NULL, help="CID", metavar="character"),
   make_option(c("-o", "--output_png"), type="character", default="tree.png", help="Output PNG file path", metavar="character")
@@ -71,7 +91,6 @@ if(nrow(dt_masst) > 0){
   dt_masst <- merge(dt_masst, dt_redu, by = "match_col", all = FALSE)
 
   dt_databases = unique(dt_redu[Database != '' & !is.na(Database), c('uid_leaf', 'Database', 'NCBIDivision')])
-  #dt_masst = rbindlist(list(dt_masst, dt_redu_extend), fill = TRUE, use.names = TRUE)
 
   print(paste("Merged MASST with REDU data with", nrow(dt_masst), "rows."))
 
@@ -129,40 +148,28 @@ if(nrow(dt_masst) > 0){
 }
 
 
-# if(nrow(dt_masst) > 0){
-#   p_t = 
-#   p_t + geom_fruit(data=dt_masst, geom=geom_bar,
-#             mapping=aes(y=uid_leaf, x=p_detected, fill = UBERONBodyPartName),
-#             width = 1,
-#             pwidth=0.5, 
-#             orientation="y", 
-#             stat="identity"
-#             ) #+
-#   # scale_fill_manual(values = c(
-#   #   "multiple" = "#6c71c4",        # A cool lavender color, suggests variety
-#   #   "rare bodypart" = "#cb4b16",   # A bold red-orange, indicating rarity
-#   #   "missing value" = "#93a1a1",   # Grey, often used for missing or unavailable data
-#   #   "feces" = "#586e75",           # Dark slate, earthy and organic
-#   #   "gallbladder" = "#b58900",     # A deep yellow, reflective of bile
-#   #   "digestive tract" = "#dc322f", # Red, associated with the internal organ color
-#   #   "leaf" = "#859900",            # A vibrant green, typical for leaves
-#   #   "root" = "#b15928",             # Brownish-orange, reminiscent of soil and roots
-#   #   "Other" = "#87CEFA"            
-#   # )) #+
-#   # guides(
-#   #   fill=guide_legend(ncol=1, title="Legend"),
-#   #   fill.1=guide_legend(ncol=1, title="Superclass"),
-#   #   fill.2=guide_legend(ncol=1, title="Tissue Type"),
-#   #   fill.3=guide_legend(ncol=2, title="Data Source"),
-#   #   fill.4=guide_legend(ncol=1, title="Annotations")
-#   # )
+
+# Read the SVG content as a string
+svg_content <- readLines(args$mol_plot, warn = FALSE)
+
+if (!requireNamespace("ggsvg", quietly = TRUE)) {
+  remotes::install_github("coolbutuseless/ggsvg")
+}
+library(ggsvg)
+
+# Add the SVG to the plot
+p_t <- p_t  + annotation_custom(
+  grob = grid::grid.draw( svg_to_rasterGrob(svg_content)), 
+  xmin = Inf, xmax = Inf, 
+  ymin = Inf, ymax = Inf
+)
 
 
-# }
+# svg_file <- image_read_svg(args$mol_plot)
+# svg_file_scaled <- image_scale(svg_file, "3000x3000")
+# svg_grob <- rasterGrob(as.raster(svg_file_scaled), interpolate = TRUE)
 
 
-# p_t = p_t %<+% geom_nodepoint(dt_sparql, aes(subset=node))
+save_plot_with_svg(p_t, svg_grob, (paste0(c(lib_id, '_', cid, '.png'), collapse = '')))
 
-
-
-ggsave(paste0(c(lib_id, '_', cid, '.png'), collapse = ''), plot = p_t, width = 10, height = 8, dpi = 300)
+#ggsave(paste0(c(lib_id, '_', cid, '.png'), collapse = ''), plot = p_t, width = 10, height = 8, dpi = 300)

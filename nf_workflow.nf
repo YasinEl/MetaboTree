@@ -18,7 +18,7 @@ params.MASST_input = "$DATA_FOLDER/CCMSLIB00000204966_capsacin.csv"
 params.tree_type = 'treeoflife' //taxonomic
 
 // params for SarQL
-params.pubchemid = "6140"
+params.pubchemid = ""
 
 // params to request masst results via usi
 params.usi = "mzspec:GNPS:GNPS-LIBRARY:accession:CCMSLIB00000085687"
@@ -192,6 +192,7 @@ process VisualizeTreeData {
     path input_tree
     path input_masst
     path input_redu
+    path mol_plot
 
     output:
     path "*.png"
@@ -202,6 +203,7 @@ process VisualizeTreeData {
     --input_tree $input_tree \
     --input_masst $input_masst \
     --input_redu $input_redu \
+    --mol_plot $mol_plot \
     --usi $params.usi \
     --cid $params.pubchemid \
     --output_png tree.png
@@ -217,11 +219,13 @@ process GetStereoCIDs {
 
     output:
     path "stereoisomers.tsv"
+    path "*.svg"
 
     script:
     """
     echo "Getting stereo pubchem IDs"
     python $TOOL_FOLDER/get_stereo_cids.py  $pubchemid
+    python $TOOL_FOLDER/plot_structure.py  $pubchemid 'molecule.svg'
     """
 }
 
@@ -324,7 +328,7 @@ workflow {
 
 
 
-    cids = GetStereoCIDs(params.pubchemid)
+    (cids, mol_plot) = GetStereoCIDs(params.pubchemid)
     sparql_response_csv = RunWikidataSparql(cids)
     ncbi_response_csv = getNCBIRecords(cids)
 
@@ -353,7 +357,7 @@ workflow {
     //(kingdom, superclass) = MakeTreeRings(redu)
 
 
-    VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets)  
+    VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets, mol_plot)  
 
 
 

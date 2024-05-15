@@ -13,4 +13,7 @@ dependencies:
   - bioconductor-ggtree
   - bioconductor-ggtreeExtra
   - r-ggplot2
+  - r-rsvg
   - r-optparse
+  - r-magick
+  - r-remotes
