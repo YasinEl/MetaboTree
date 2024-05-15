@@ -1,4 +1,3 @@
-print('beginning')
 import argparse
 import requests
 from rdkit import Chem
@@ -9,15 +8,20 @@ def fetch_related_cids(cid):
     """Fetch all CIDs related by connectivity to the given CID."""
     url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/cids/JSON?cids_type=same_isotopes"
     print("fetching related CIDs")
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raises an HTTPError for bad responses
-        data = response.json()
-        print(data)
-        return data['IdentifierList']['CID']
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching related CIDs: {e}")
-        sys.exit(1)
+    attempts = 0
+    while attempts < 2:
+        try:
+            response = requests.get(url, timeout=60)
+            response.raise_for_status()  # Raises an HTTPError for bad responses
+            data = response.json()
+            print(data)
+            return data['IdentifierList']['CID']
+        except requests.exceptions.RequestException as e:
+            attempts += 1
+            print(f"Attempt {attempts} failed: {e}")
+            if attempts == 2:
+                print("Max attempts reached. Saving input CID.")
+                return [cid]
 
 def filter_cids_remove_isotopes(related_cids):
     """Filter out CIDs that contain isotopes in their structure."""

@@ -26,6 +26,7 @@ def load_data(redu_path, sparql_path, ncbi_path):
         print(f"df_ncbi NCBI unique values (sample): {df_ncbi['NCBI'].unique()[:10]}")
     else:
         print("df_ncbi is empty")
+        df_ncbi = pd.DataFrame({'NCBI': [], 'Database': []})
 
     if not dt_sparql.empty:
         dt_sparql['NCBI'] = dt_sparql['ncbiTaxonomyID'].astype(str).str.strip().astype(int)
@@ -38,6 +39,7 @@ def load_data(redu_path, sparql_path, ncbi_path):
         print(f"dt_sparql NCBI unique values (sample): {dt_sparql['NCBI'].unique()[:10]}")
     else:
         print("dt_sparql is empty")
+        dt_sparql = pd.DataFrame({'NCBI': [], 'Database': []})
 
     # Concatenate dataframes
     df_databases = pd.concat([dt_sparql, df_ncbi])

@@ -58,9 +58,15 @@ if __name__ == '__main__':
         }
 
         result = fast_masst(params)
-        if isinstance(result, pd.DataFrame) and not result.empty:
-            result['Database'] = db
-            all_results.append(result)
+
+        print(result)
+
+        df_masst_results = pd.DataFrame(result['results'])
+
+        print(df_masst_results)
+        if isinstance(df_masst_results, pd.DataFrame) and not df_masst_results.empty:
+            df_masst_results['library'] = db
+            all_results.append(df_masst_results)
 
     if all_results:
         # Combining results from all databases

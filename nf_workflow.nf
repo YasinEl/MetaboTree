@@ -21,7 +21,7 @@ params.tree_type = 'treeoflife' //taxonomic
 params.pubchemid = "6140"
 
 // params to request masst results via usi
-params.usi = "mzspec:GNPS:GNPS-LIBRARY:accession:CCMSLIB00006116693"
+params.usi = "mzspec:GNPS:GNPS-LIBRARY:accession:CCMSLIB00000085687"
 params.precursor_mz_tol = 0.05
 params.mz_tol = 0.05
 params.min_cos = 0.6
@@ -105,11 +105,9 @@ process Process_MASST_Wikidata_Pubchem_Results {
 }
 
 process RunFastMASST {
+
     conda "$baseDir/envs/py_env.yml"
     
-    cache false
-
-
     input:
     val usi
 
@@ -184,6 +182,8 @@ process getNCBIRecords {
 
 
 process VisualizeTreeData {
+    cache false
+
     conda "$baseDir/envs/r_env.yml" 
 
     publishDir "./nf_output", mode: 'copy'
@@ -194,8 +194,7 @@ process VisualizeTreeData {
     path input_redu
 
     output:
-    path "check_this.csv"
-    path "tree.png"
+    path "*.png"
 
     script:
     """
@@ -203,6 +202,8 @@ process VisualizeTreeData {
     --input_tree $input_tree \
     --input_masst $input_masst \
     --input_redu $input_redu \
+    --usi $params.usi \
+    --cid $params.pubchemid \
     --output_png tree.png
     """
 }
@@ -348,7 +349,7 @@ workflow {
 
 
 
-    (masst_response_csv) = RunFastMASST(params.usi)
+    masst_response_csv = RunFastMASST(params.usi)
     //(kingdom, superclass) = MakeTreeRings(redu)
 
 

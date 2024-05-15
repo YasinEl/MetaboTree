@@ -13,13 +13,14 @@ def load_and_filter_tree(tree_path, ott_ids):
     tree = Tree(tree_path, format=1)  # format=1 assumes Newick format
     # Convert ott_ids to strings for comparison with leaf names
     ott_ids_str = set(map(str, ott_ids))
-    tree_leaves = set(tree.get_leaf_names())
+    #tree_leaves = set(tree.get_leaf_names())
+    all_nodes = set(node.name for node in tree.traverse())
 
     print('tree_leaves')
-    print(list(tree_leaves)[1:10])
+    print(list(all_nodes)[1:10])
     # Find which OTT IDs are present in the tree
-    valid_ids = ott_ids_str & tree_leaves
-    invalid_ids = ott_ids_str - tree_leaves
+    valid_ids = ott_ids_str & all_nodes
+    invalid_ids = ott_ids_str - all_nodes
     if not valid_ids:
         with open('invalid_ott_ids.txt', 'w') as f:
             for ott_id in invalid_ids:

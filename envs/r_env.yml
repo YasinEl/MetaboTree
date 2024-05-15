@@ -9,6 +9,7 @@ dependencies:
   - r-tidyverse 
   - r-data.table
   - r-taxize 
+  - r-phytools
   - bioconductor-ggtree
   - bioconductor-ggtreeExtra
   - r-ggplot2
