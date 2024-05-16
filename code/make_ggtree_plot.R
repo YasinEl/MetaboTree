@@ -10,6 +10,10 @@ library(ggnewscale)
 library(grid)
 library(magick)
 library(stringr)
+library(cowplot)
+library(png)
+library(grid)
+library(readr)
 #library(phytools)
 
 
@@ -46,7 +50,8 @@ option_list <- list(
   make_option(c("-i", "--input_tree"), type="character", default=NULL, help="Input Newick file path", metavar="character"),
   make_option(c("-l", "--input_masst"), type="character", default=NULL, help="Input library file path", metavar="character"),
   make_option(c("-r", "--input_redu"), type="character", default=NULL, help="Input REDU file path", metavar="character"),
-  make_option(c("-m", "--mol_plot"), type="character", default=NULL, help="Molecule svg", metavar="character"),
+  make_option(c("-m", "--mol_plot"), type="character", default=NULL, help="Molecule png path", metavar="character"),
+  make_option(c("-n", "--mol_name"), type="character", default=NULL, help="Molecule name tsv path", metavar="character"),
   make_option(c("-u", "--usi"), type="character", default=NULL, help="USI", metavar="character"),
   make_option(c("-p", "--cid"), type="character", default=NULL, help="CID", metavar="character"),
   make_option(c("-o", "--output_png"), type="character", default="tree.png", help="Output PNG file path", metavar="character")
@@ -57,6 +62,13 @@ args <- parse_args(OptionParser(option_list=option_list))
 
 lib_id = strsplit(args$usi, ':')[[1]][5]
 cid = args$cid
+
+
+#load moelcule name
+name_df <- read_tsv(args$mol_name, col_names = c("Name"))
+molecule_name <- as.character(name_df$Name)
+
+
 
 # Load ReDU table
 dt_redu <- fread(args$input_redu)
@@ -94,16 +106,12 @@ if(nrow(dt_masst) > 0){
 
   print(paste("Merged MASST with REDU data with", nrow(dt_masst), "rows."))
 
-fwrite(dt_databases, 'dt_databases.csv')
-
   dt_masst = dt_masst[uid_leaf %in% unique(dt_tree_ids$uid_leaf)]
 
-fwrite(dt_masst, 'bdf_merged_check1.csv')
+  fwrite(dt_masst[, c('uid_leaf', 'Database', 'tax_name', 'NCBI', 'NCBIDivision', 'Cosine', 'Matching Peaks')], paste0(c('masstResults_',  lib_id, '_', cid, '.csv'), collapse = ''))
 
-  dt_masst = dt_masst[, .(n_detected = sum(!is.na(match_col)), p_detected = sum(!is.na(match_col))/unique(n_samples)*100), by =.(uid_leaf, UBERONBodyPartName, NCBIDivision, Database)]
 
-  fwrite(dt_masst, 'cdf_merged_processed.csv')
-
+  dt_masst = dt_masst[, .(n_detected = sum(!is.na(match_col)), p_detected = sum(!is.na(match_col))/unique(n_samples)*100), by =.(uid_leaf)]
   } else {
   dt_masst = data.table(uid_leaf = c(), p_detected = c())
 }
@@ -117,6 +125,7 @@ dt_masst[, p_detected := as.numeric(p_detected)]
 p_t = ggtree(tree, layout='circular', size=0.15, open.angle=5) + 
 geom_point2(aes(subset = (node == 'ott84004')), size = 10, color = "red") +
 ggtitle(paste0(c('GNPS:', lib_id, 'Pubchem:', cid), collapse = ' ')) +
+labs(caption = molecule_name) +
   geom_fruit(data=dt_ncbi_kingdom, geom=geom_tile,
              mapping=aes(y=uid_leaf,  fill=NCBIDivision),
              pwidth = 1)  +
@@ -150,26 +159,33 @@ if(nrow(dt_masst) > 0){
 
 
 # Read the SVG content as a string
-svg_content <- readLines(args$mol_plot, warn = FALSE)
+# svg_content <- readLines(args$mol_plot, warn = FALSE)
 
-if (!requireNamespace("ggsvg", quietly = TRUE)) {
-  remotes::install_github("coolbutuseless/ggsvg")
-}
-library(ggsvg)
+# if (!requireNamespace("ggsvg", quietly = TRUE)) {
+#   remotes::install_github("coolbutuseless/ggsvg")
+# }
+# library(ggsvg)
 
-# Add the SVG to the plot
-p_t <- p_t  + annotation_custom(
-  grob = grid::grid.draw( svg_to_rasterGrob(svg_content)), 
-  xmin = Inf, xmax = Inf, 
-  ymin = Inf, ymax = Inf
-)
-
-
-# svg_file <- image_read_svg(args$mol_plot)
-# svg_file_scaled <- image_scale(svg_file, "3000x3000")
-# svg_grob <- rasterGrob(as.raster(svg_file_scaled), interpolate = TRUE)
+# # Add the SVG to the plot
+# p_t <- p_t  + annotation_custom(
+#   grob = grid::grid.draw( svg_to_rasterGrob(svg_content)), 
+#   xmin = Inf, xmax = Inf, 
+#   ymin = Inf, ymax = Inf
+# )
 
 
-save_plot_with_svg(p_t, svg_grob, (paste0(c(lib_id, '_', cid, '.png'), collapse = '')))
+#svg_file <- image_read_svg(args$mol_plot)
+#svg_file_scaled <- image_scale(svg_file, "3000x3000")
+#svg_grob <- rasterGrob(as.raster(svg_file_scaled), interpolate = TRUE)
+img <- image_read(args$mol_plot)
+img_resized <- image_resize(img, "800x800")
+img_raster <- rasterGrob(img, interpolate = TRUE)
 
-#ggsave(paste0(c(lib_id, '_', cid, '.png'), collapse = ''), plot = p_t, width = 10, height = 8, dpi = 300)
+# Overlay the image on the ggplot
+p_t <- ggdraw(p_t) +
+  draw_grob(img_raster, x = 0.95, y = 1, width = 0.4, height = 0.3, hjust = 1, vjust = 1)
+
+
+# save_plot_with_svg(p_t, svg_grob, (paste0(c(lib_id, '_', cid, '.png'), collapse = '')))
+
+ggsave(paste0(c('tree_',  lib_id, '_', cid, '.png'), collapse = ''), plot = p_t, width = 10, height = 8, dpi = 300)

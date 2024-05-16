@@ -34,8 +34,6 @@ params.analog_mass_above = 200
 process DownloadData {
     conda "$baseDir/envs/py_env.yml"
 
-    publishDir "./nf_output", mode: 'copy'
-
     output:
     path 'redu.tsv' 
 
@@ -48,8 +46,6 @@ process DownloadData {
 
 process RequestNCBIlinages {
     conda "$baseDir/envs/r_env.yml"
-
-    publishDir "./nf_output", mode: 'copy'
 
     input:
     path input_file
@@ -67,8 +63,6 @@ process RequestNCBIlinages {
 process CreateTaxTree {
     conda "$baseDir/envs/py_env.yml"
 
-    publishDir "./nf_output", mode: 'copy'
-
     input:
     path input_csv
 
@@ -84,8 +78,6 @@ process CreateTaxTree {
 
 process Process_MASST_Wikidata_Pubchem_Results {
     conda "$baseDir/envs/py_env.yml"
-
-    publishDir "./nf_output", mode: 'copy'
 
     input:
     path redu_tsv
@@ -107,6 +99,8 @@ process Process_MASST_Wikidata_Pubchem_Results {
 process RunFastMASST {
 
     conda "$baseDir/envs/py_env.yml"
+
+    publishDir "./nf_output", mode: 'copy'
     
     input:
     val usi
@@ -133,21 +127,19 @@ process RunWikidataSparql {
     publishDir "./nf_output", mode: 'copy'
 
     output:
-    path "sparql_query.csv"
+    path "sparql_*.csv"
 
     script:
     """
-     python $TOOL_FOLDER/make_sparql.py  $pubchemids
-     wikidata-dl sparql_query.sparql
-     mv wikidata/sparql_query.csv sparql_query.csv
+     python $TOOL_FOLDER/make_sparql.py  $pubchemids $params.pubchemid $params.usi
+     wikidata-dl *.sparql
+     mv wikidata/*.csv ./
     """
 }
 
 
 process MakeTreeRings {
     conda "$baseDir/envs/r_env.yml"
-
-    publishDir "./nf_output", mode: 'copy'
 
     input:
     path redu_tsv
@@ -193,9 +185,11 @@ process VisualizeTreeData {
     path input_masst
     path input_redu
     path mol_plot
+    path mol_name
 
     output:
     path "*.png"
+    path "*.csv"
 
     script:
     """
@@ -204,6 +198,7 @@ process VisualizeTreeData {
     --input_masst $input_masst \
     --input_redu $input_redu \
     --mol_plot $mol_plot \
+    --mol_name $mol_name \
     --usi $params.usi \
     --cid $params.pubchemid \
     --output_png tree.png
@@ -212,30 +207,45 @@ process VisualizeTreeData {
 
 
 process GetStereoCIDs {
+    
     conda "$baseDir/envs/py_env.yml"
-
+    
     input:
     val pubchemid
 
     output:
     path "stereoisomers.tsv"
-    path "*.svg"
+    path "main_name.tsv"
 
     script:
     """
-    echo "Getting stereo pubchem IDs"
-    python $TOOL_FOLDER/get_stereo_cids.py  $pubchemid
-    python $TOOL_FOLDER/plot_structure.py  $pubchemid 'molecule.svg'
+    python $TOOL_FOLDER/get_stereo_cids.py $pubchemid
     """
 }
+
+
+process plot_molecule {
+    
+    conda "$baseDir/envs/py_env.yml"
+    
+    input:
+    val pubchemid
+
+    output:
+    path "molecule.png"
+
+    script:
+    """
+    python $TOOL_FOLDER/plot_structure.py  $pubchemid 
+    """
+}
+
 
 
 process Request_treeoflife_ids {
 
 
     conda "$baseDir/envs/py_env.yml"
-
-    publishDir "./nf_output", mode: 'copy'
 
     input:
     path input_csv
@@ -255,8 +265,6 @@ process Update_ReDU_df_with_TOL {
     conda "$baseDir/envs/py_env.yml"
 
 
-    publishDir "./nf_output", mode: 'copy'
-
     input:
     path treeoflife_response
     path redu
@@ -274,8 +282,6 @@ process Update_ReDU_df_with_TOL {
 process CreateTOLTree {
     conda "$baseDir/envs/py_env.yml"
 
-    publishDir "./nf_output", mode: 'copy'
-
     input:
     path input_csv
 
@@ -291,8 +297,6 @@ process CreateTOLTree {
 process Make_ID_table {
 
     conda "$baseDir/envs/py_env.yml"
-
-    publishDir "./nf_output", mode: 'copy'
 
     input:
     path redu
@@ -328,7 +332,8 @@ workflow {
 
 
 
-    (cids, mol_plot) = GetStereoCIDs(params.pubchemid)
+    (cids, mol_name) = GetStereoCIDs(params.pubchemid)
+    mol_plot = plot_molecule(params.pubchemid)
     sparql_response_csv = RunWikidataSparql(cids)
     ncbi_response_csv = getNCBIRecords(cids)
 
@@ -357,7 +362,7 @@ workflow {
     //(kingdom, superclass) = MakeTreeRings(redu)
 
 
-    VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets, mol_plot)  
+    VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets, mol_plot, mol_name)  
 
 
 

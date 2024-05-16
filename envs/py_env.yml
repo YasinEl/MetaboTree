@@ -13,3 +13,4 @@ dependencies:
   - pip:
       - rdkit
       - wikidata-dl
+      - Pillow

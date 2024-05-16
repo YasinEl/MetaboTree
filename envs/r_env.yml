@@ -17,3 +17,5 @@ dependencies:
   - r-optparse
   - r-magick
   - r-remotes
+  - r-cowplot
+  - r-png

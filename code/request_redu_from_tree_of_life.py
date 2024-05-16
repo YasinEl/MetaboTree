@@ -3,7 +3,6 @@ import pandas as pd
 import numpy as np
 import requests
 import logging
-from Bio import Entrez
 import json
 import time
 
