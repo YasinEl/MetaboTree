@@ -2,10 +2,10 @@ import pandas as pd
 import argparse
 from Bio import Entrez
 
-def load_data(redu_path, sparql_path, ncbi_path):
+def load_data(redu_path, sparql_path):
     df_redu = pd.read_csv(redu_path, sep='\t', low_memory=False)
     dt_sparql = pd.read_csv(sparql_path)
-    df_ncbi = pd.read_csv(ncbi_path)
+    #df_ncbi = pd.read_csv(ncbi_path)
 
     # Convert NCBI column to integer and strip any whitespace
     df_redu['NCBI'] = df_redu['NCBI'].astype(str).str.strip().astype(int)
@@ -15,18 +15,18 @@ def load_data(redu_path, sparql_path, ncbi_path):
     print(f"Existing NCBI IDs in df_redu (sample): {list(existing_ncbi_ids)[:10]}")
 
     # Prepare df_ncbi and dt_sparql by ensuring NCBI ID columns are integer
-    if not df_ncbi.empty:
-        df_ncbi['NCBI'] = df_ncbi['NCBI'].astype(str).str.strip()
-        df_ncbi['NCBI'] = df_ncbi['NCBI'].astype(int)
-        df_ncbi = df_ncbi.drop_duplicates()
-        df_ncbi['Database'] = 'NCBI_biosystems'
+    # if not df_ncbi.empty:
+    #     df_ncbi['NCBI'] = df_ncbi['NCBI'].astype(str).str.strip()
+    #     df_ncbi['NCBI'] = df_ncbi['NCBI'].astype(int)
+    #     df_ncbi = df_ncbi.drop_duplicates()
+    #     df_ncbi['Database'] = 'NCBI_biosystems'
 
-        # Print debug info
-        print(f"df_ncbi NCBI unique count: {df_ncbi['NCBI'].nunique()}")
-        print(f"df_ncbi NCBI unique values (sample): {df_ncbi['NCBI'].unique()[:10]}")
-    else:
-        print("df_ncbi is empty")
-        df_ncbi = pd.DataFrame({'NCBI': [], 'Database': []})
+    #     # Print debug info
+    #     print(f"df_ncbi NCBI unique count: {df_ncbi['NCBI'].nunique()}")
+    #     print(f"df_ncbi NCBI unique values (sample): {df_ncbi['NCBI'].unique()[:10]}")
+    # else:
+    #     print("df_ncbi is empty")
+    #     df_ncbi = pd.DataFrame({'NCBI': [], 'Database': []})
 
     if not dt_sparql.empty:
         dt_sparql['NCBI'] = dt_sparql['ncbiTaxonomyID'].astype(str).str.strip().astype(int)
@@ -42,7 +42,8 @@ def load_data(redu_path, sparql_path, ncbi_path):
         dt_sparql = pd.DataFrame({'NCBI': [], 'Database': []})
 
     # Concatenate dataframes
-    df_databases = pd.concat([dt_sparql, df_ncbi])
+    # df_databases = pd.concat([dt_sparql, df_ncbi])
+    df_databases = dt_sparql
 
     # Merge df_redu with df_databases to get the Database column
     df_merged = pd.merge(df_redu, df_databases, on='NCBI', how='left', suffixes=('', '_from_db'))
@@ -71,7 +72,7 @@ def load_data(redu_path, sparql_path, ncbi_path):
     return df_merged
 
 def main(args):
-    df_redu = load_data(args.redu_path, args.sparql_path, args.ncbi_path)
+    df_redu = load_data(args.redu_path, args.sparql_path)
     df_redu.to_csv('all_organism_table.csv', index=False)
     print(f"Data saved to all_organism_table.csv")
 
@@ -79,7 +80,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Extend df_redu with additional NCBI IDs from CSV files.")
     parser.add_argument('redu_path', help='Path to the REDU CSV file')
     parser.add_argument('sparql_path', help='Path to the SPARQL CSV file')
-    parser.add_argument('ncbi_path', help='Path to the NCBI CSV file')
+    # parser.add_argument('ncbi_path', help='Path to the NCBI CSV file')
     
     args = parser.parse_args()
     df = main(args)

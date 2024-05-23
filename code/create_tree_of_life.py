@@ -44,13 +44,21 @@ def main(args):
     # Load and filter the tree
     tree = load_and_filter_tree(args.tree_path, unique_ott_ids)
 
-    # Output the tree and save it
-    save_tree(tree, 'tree.nw')
+    return tree
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process REDU data and filter phylogenetic tree based on OTT IDs.")
-    parser.add_argument('input_csv', type=str, help="Path to the input CSV file containing REDU data.")
-    parser.add_argument('tree_path', type=str, help="Path to the input tree file.")
+    parser.add_argument('--input_csv', type=str, help="Path to the input CSV file containing REDU data.")
+    parser.add_argument('--tree_path', type=str, help="Path to the input tree file.")
+    parser.add_argument('--usi', type=str, help="Path to the input tree file.")
+    parser.add_argument('--cid', type=str, help="Path to the input tree file.")
     args = parser.parse_args()
 
-    main(args)
+    tree = main(args)
+
+    print(args.usi)
+    tree.write(format=1, outfile='treeGraph_' + args.usi.split(':')[4] + '_' + args.cid + '.nw')
+    
+    #fwrite(dt_tree_ids_redu[!is.na(uid_leaf) & uid_leaf != '', c('FeatureID', 'tax_name', 'detected', 'Cosine', 'Matching Peaks', 'UBERONBodyPartName', 'NCBIDivision')], paste0(c('treeAnnotation_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')

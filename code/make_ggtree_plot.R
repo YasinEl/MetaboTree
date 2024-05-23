@@ -14,7 +14,7 @@ library(cowplot)
 library(png)
 library(grid)
 library(readr)
-#library(phytools)
+library(viridis)
 
 
 USI2MASST_matchCol <- function(x) {
@@ -89,6 +89,7 @@ dt_tree_ids = data.table(uid_leaf = c(tree$tip.label, tree$node.label))
 # Load data tables
 dt_masst <- fread(args$input_masst)
 
+dt_databases = data.table(uid_leaf = c(), Database = c(), NCBIDivision = c())
 
 if(nrow(dt_masst) > 0){
   dt_masst[, match_col := USI2MASST_matchCol(unique(USI)), by =.(USI)]
@@ -107,23 +108,28 @@ if(nrow(dt_masst) > 0){
   print(paste("Merged MASST with REDU data with", nrow(dt_masst), "rows."))
 
   dt_masst = dt_masst[uid_leaf %in% unique(dt_tree_ids$uid_leaf)]
+  
 
-  fwrite(dt_masst[, c('uid_leaf', 'Database', 'tax_name', 'NCBI', 'NCBIDivision', 'Cosine', 'Matching Peaks')], paste0(c('masstResults_',  lib_id, '_', cid, '.csv'), collapse = ''))
+
+  dt_masst_exp = dt_masst[, .(Cosine = max(Cosine )), by =.(uid_leaf, tax_name)]
+
+  dt_masst_exp [, FeatureID := uid_leaf]
+
+  fwrite(dt_masst_exp[!is.na(uid_leaf) & uid_leaf != '', c('FeatureID', 'tax_name', 'Cosine')], paste0(c('masstResults_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
+
+  dt_masst = dt_masst[!is.na(Cosine)]
+
+  #fwrite(dt_masst[, c('uid_leaf', 'Database', 'tax_name', 'NCBI', 'NCBIDivision', 'UBERONBodyPartName', 'Delta Mass', 'Cosine', 'Matching Peaks', 'USI')], paste0(c('masstResults_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
 
 
-  dt_masst = dt_masst[, .(n_detected = sum(!is.na(match_col)), p_detected = sum(!is.na(match_col))/unique(n_samples)*100), by =.(uid_leaf)]
+  dt_masst = dt_masst[, .(n_detected = sum(!is.na(match_col)), p_detected = sum(!is.na(match_col))/unique(n_samples)*100, Cosine = max(Cosine)), by =.(uid_leaf)]
   } else {
-  dt_masst = data.table(uid_leaf = c(), p_detected = c())
+  dt_masst = data.table(uid_leaf = c(), p_detected = c(), Cosine = c())
 }
 
 
 
-
-
-dt_masst[, p_detected := as.numeric(p_detected)]
-
 p_t = ggtree(tree, layout='circular', size=0.15, open.angle=5) + 
-geom_point2(aes(subset = (node == 'ott84004')), size = 10, color = "red") +
 ggtitle(paste0(c('GNPS:', lib_id, 'Pubchem:', cid), collapse = ' ')) +
 labs(caption = molecule_name) +
   geom_fruit(data=dt_ncbi_kingdom, geom=geom_tile,
@@ -146,17 +152,38 @@ if(nrow(dt_databases) > 0){
   p_t = p_t + geom_fruit(data=dt_databases, geom_point,
   mapping=aes(y=uid_leaf, color = Database), size=1, alpha=0.5) +
   new_scale_color()
+ 
 
 }
 
 if(nrow(dt_masst) > 0){
   p_t = 
   p_t + geom_fruit(data=dt_masst, geom=geom_point,
-            mapping=aes(y=uid_leaf, color = p_detected)) +
-    scale_color_continuous(name = "p_detected") #+
+            mapping=aes(y=uid_leaf, color = Cosine)) +
+            scale_color_viridis(option = "D", discrete = FALSE)
+
+
+tree_data <- as.data.table(p_t$data)
+
+# Join with tree_data to get x coordinates
+dt_masst <- merge(dt_masst, tree_data, by.x = "uid_leaf", by.y = "label", all.x = TRUE)
+
+
+
+  p_t = 
+  p_t + geom_point2(data= dt_masst, aes(x = x, y = y, color = Cosine), alpha = 0.5) +
+    scale_color_continuous(name = "Cosine")  +
+    scale_color_viridis(option = "D", discrete = FALSE)
 }
 
+if ( nrow(dt_databases) > 0){
 
+  dt_databases <- merge(dt_databases, tree_data, by.x = "uid_leaf", by.y = "label", all.x = TRUE)
+  
+  p_t = 
+  p_t + geom_point2(data= dt_databases, aes(x = x, y = y, color = Database), color = 'red', shape = 4)
+
+}
 
 # Read the SVG content as a string
 # svg_content <- readLines(args$mol_plot, warn = FALSE)

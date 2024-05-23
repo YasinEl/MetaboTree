@@ -4,6 +4,7 @@ import logging
 import json
 import pandas as pd
 import time
+import os
 
 def _fast_masst(params):
     URL = "https://fasst.gnps2.org/search"
@@ -15,7 +16,7 @@ def _fast_masst(params):
             return search_api_response.json()
         except requests.exceptions.RequestException as e:
             logging.error(f"Request failed on attempt {attempt + 1}: {str(e)}")
-            if attempt < 4:  # 4 because attempt starts from 0 and we need 5 attempts
+            if attempt < 4:
                 time.sleep(1)
             else:
                 return {}
@@ -32,7 +33,7 @@ def fast_masst(params):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Fetch MASST search results from GNPS")
-    parser.add_argument("usi_or_lib_id", help="USI or Library ID for the search")
+    parser.add_argument("usi_or_lib_id", help="USI, Library ID, or TSV file containing USIs for the search")
     parser.add_argument("--precursor_mz_tol", type=float, default=0.02, help="Precursor M/Z tolerance")
     parser.add_argument("--mz_tol", type=float, default=0.02, help="Fragment M/Z tolerance")
     parser.add_argument("--min_cos", type=float, default=0.7, help="Minimum cosine similarity")
@@ -42,51 +43,52 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    if args.usi_or_lib_id.endswith(".tsv"):
+        usi_df = pd.read_csv(args.usi_or_lib_id, sep='\t')
+        usi_list = usi_df['usi'].tolist()
+    else:
+        usi_list = [args.usi_or_lib_id]
+
     databases = ["gnpsdata_index", "gnpsdata_index_11_25_23"]
     all_results = []
 
-    for db in databases:
-        params = {
-            "usi": args.usi_or_lib_id,
-            "library": db,
-            "analog": "Yes" if args.analog else "No",
-            "delta_mass_below": args.analog_mass_below,
-            "delta_mass_above": args.analog_mass_above,
-            "pm_tolerance": args.precursor_mz_tol,
-            "fragment_tolerance": args.mz_tol,
-            "cosine_threshold": args.min_cos,
-        }
+    for usi in usi_list:
+        for db in databases:
+            params = {
+                "usi": usi,
+                "library": db,
+                "analog": "Yes" if args.analog else "No",
+                "delta_mass_below": args.analog_mass_below,
+                "delta_mass_above": args.analog_mass_above,
+                "pm_tolerance": args.precursor_mz_tol,
+                "fragment_tolerance": args.mz_tol,
+                "cosine_threshold": args.min_cos,
+            }
 
-        result = fast_masst(params)
+            result = fast_masst(params)
 
-        print(result)
-
-        df_masst_results = pd.DataFrame(result['results'])
-
-        print(df_masst_results)
-        if isinstance(df_masst_results, pd.DataFrame) and not df_masst_results.empty:
-            df_masst_results['library'] = db
-            all_results.append(df_masst_results)
+            if 'results' in result:
+                df_masst_results = pd.DataFrame(result['results'])
+                if not df_masst_results.empty:
+                    df_masst_results['library'] = db
+                    df_masst_results['library_usi'] = usi
+                    all_results.append(df_masst_results)
 
     if all_results:
-        # Combining results from all databases
         combined_df = pd.concat(all_results, ignore_index=True)
-        # Drop duplicates
         combined_df.drop_duplicates(subset=['USI'], inplace=True)
-
-        # Ensure the expected columns are present
-        expected_columns = ['Delta Mass', 'USI', 'Charge', 'Cosine', 'Matching Peaks', 'Dataset']
+        expected_columns = ['Delta Mass', 'USI', 'Charge', 'Cosine', 'Matching Peaks', 'Dataset', 'library', 'library_usi']
         for col in expected_columns:
             if col not in combined_df.columns:
                 combined_df[col] = pd.NA
-
-        # Selecting specific columns if needed
         combined_df = combined_df[expected_columns]
     else:
-        # Create an empty DataFrame with the required columns if no results were fetched
-        combined_df = pd.DataFrame(columns=['Delta Mass', 'USI', 'Charge', 'Cosine', 'Matching Peaks', 'Dataset'])
+        combined_df = pd.DataFrame(columns=['Delta Mass', 'USI', 'Charge', 'Cosine', 'Matching Peaks', 'Dataset', 'library', 'library_usi'])
 
-    # Saving the DataFrame to a CSV file
+    combined_df = combined_df[(abs(combined_df['Delta Mass']) <= args.precursor_mz_tol) & (combined_df['Matching Peaks'] >= 3)] 
+    
     combined_df.to_csv('masst_results.csv', index=False)
 
     print("CSV file has been created successfully.")
+    
+   

@@ -30,12 +30,26 @@ URL1="ftp://ftp.ncbi.nih.gov/pub/biosystems/biosystems.20170421/biosystems_pcsub
 URL2="ftp://ftp.ncbi.nih.gov/pub/biosystems/biosystems.20170421/biosystems_taxonomy.gz"
 URL3="https://files.opentreeoflife.org/ott/ott3.7/ott3.7.tgz"
 URL4="https://files.opentreeoflife.org/synthesis/opentree14.9/opentree14.9tree.tgz"
+URL5="https://redu.gnps2.org/dump"
 
 # Download the files to the script's directory if they don't exist
 download_file "$URL1" "${DIR}/biosystems_pcsubstance.gz"
 download_file "$URL2" "${DIR}/biosystems_taxonomy.gz"
 download_file "$URL3" "${DIR}/ott3.7.tgz"
 download_file "$URL4" "${DIR}/opentree14.9tree.tgz"
+
+# Download the redu.tsv file
+if [ ! -f "${DIR}/redu.tsv" ]; then
+    echo "Downloading redu.tsv..."
+    wget -q -O "${DIR}/redu.tsv" "$URL5"
+    if [ $? -eq 0 ]; then
+        echo "redu.tsv has been downloaded to ${DIR}"
+    else
+        echo "Failed to download redu.tsv."
+    fi
+else
+    echo "redu.tsv already exists. Skipping download."
+fi
 
 # Unzip the files in the same directory if they don't already exist
 if [ -f "${DIR}/biosystems_pcsubstance.gz" ]; then
