@@ -111,11 +111,11 @@ if(nrow(dt_masst) > 0){
   
 
 
-  dt_masst_exp = dt_masst[, .(Cosine = max(Cosine )), by =.(uid_leaf, tax_name)]
+  dt_masst_exp = dt_masst[, .(Cosine = max(Cosine )), by =.(uid_leaf, tax_name, USI)]
 
   dt_masst_exp [, FeatureID := uid_leaf]
 
-  fwrite(dt_masst_exp[!is.na(uid_leaf) & uid_leaf != '', c('FeatureID', 'tax_name', 'Cosine')], paste0(c('masstResults_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
+  fwrite(dt_masst_exp[!is.na(uid_leaf) & uid_leaf != '', c('FeatureID', 'tax_name', 'Cosine', 'USI')], paste0(c('masstResults_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
 
   dt_masst = dt_masst[!is.na(Cosine)]
 

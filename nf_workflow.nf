@@ -45,7 +45,7 @@ process PrepareReDU {
 
     script:
     """
-    python $TOOL_FOLDER/prepare_redu_table.py "$DATA_FOLDER/redu.tsv"
+    python $TOOL_FOLDER/prepare_redu_table.py "$DATA_FOLDER/redu.tsv" "$DATA_FOLDER/masst_datatsets_filenames.txt" "$DATA_FOLDER/masst_datatsets_filenames2.txt"
     """
 }
 
@@ -60,7 +60,7 @@ process RequestNCBIlinages {
 
     script:
     """
-    $TOOL_FOLDER/request_ncbi_linages.R $input_file all_redu_linages_redu.csv
+    $TOOL_FOLDER/request_ncbi_linages.R $input_file "$DATA_FOLDER/all_redu_linages.csv" all_redu_linages_redu.csv
     """
 }
 
@@ -253,15 +253,17 @@ process Request_treeoflife_ids {
     conda "$baseDir/envs/py_env.yml"
 
     input:
-    each input_csv
+    each input_redu
+    each input_linage
     each ncbi_to_ToL_file
 
     output:
     path "modified_tree_of_life.csv"
+    path "linage_table.csv"
 
     script:
     """
-    python $TOOL_FOLDER/request_redu_from_tree_of_life.py $input_csv $ncbi_to_ToL_file
+    python $TOOL_FOLDER/request_redu_from_tree_of_life.py $input_redu $input_linage $ncbi_to_ToL_file
     """
 }
 
@@ -332,14 +334,16 @@ process prepare_ncbi_to_ToL_file {
 
     script:
     """
-    python $TOOL_FOLDER/prepare_ncbi_to_ToL_file_ranked.py $DATA_FOLDER/taxonomy.tsv
+    python $TOOL_FOLDER/prepare_ncbi_to_ToL_file.py $DATA_FOLDER/taxonomy.tsv
     """
 }
 
 
 process generateEmpressPlot {
 
-    conda "$baseDir/envs/qiime2-amplicon-2024.2-py38-linux-conda.yml"
+    // conda "$baseDir/envs/qiime2-amplicon-2024.2-py38-linux-conda.yml"
+
+    conda "$baseDir/envs/env_empress_custom.yml"
 
     publishDir "./nf_output", mode: 'copy'
 
@@ -369,6 +373,7 @@ process makeTreeAnnotationTable {
     each input_tree
     each input_masst
     each input_redu
+    each input_linage
 
     output:
     path "*.tsv"
@@ -379,6 +384,7 @@ process makeTreeAnnotationTable {
     --input_tree $input_tree \
     --input_masst $input_masst \
     --input_redu $input_redu \
+    --input_linage $input_linage \
     --usi $params.usi \
     --cid $params.pubchemid \
     """
@@ -398,16 +404,16 @@ workflow run_phyloMASST {
     redu = PrepareReDU()
     redu_w_datasets = Make_ID_table(redu, sparql_response_csv)//, ncbi_response_csv)
 
-
+    ncbi_linage = RequestNCBIlinages(redu_w_datasets)
 
     if (params.tree_type == 'taxonomic'){
-        ncbi_linage = RequestNCBIlinages(redu_w_datasets)
+        // ncbi_linage = RequestNCBIlinages(redu_w_datasets)
         (tree_json, tree_nerwik) = CreateTaxTree(ncbi_linage)
     }
     if (params.tree_type == 'treeoflife'){
         ncbi_to_ToL_file = prepare_ncbi_to_ToL_file() // format NCBI -> ToL file
 
-        redu_w_datasets = Request_treeoflife_ids(redu_w_datasets, ncbi_to_ToL_file)
+        (redu_w_datasets, ncbi_linage) = Request_treeoflife_ids(redu_w_datasets, ncbi_linage, ncbi_to_ToL_file)
         tree_nerwik = CreateTOLTree(redu_w_datasets)
     }
     masst_response_csv = RunFastMASST(params.usi)
@@ -419,7 +425,7 @@ workflow run_phyloMASST {
 
     
 
-    makeTreeAnnotationTable(tree_nerwik, masst_response_csv, redu_w_datasets)
+    makeTreeAnnotationTable(tree_nerwik, masst_response_csv, redu_w_datasets, ncbi_linage)
 
     // generateEmpressPlot(tree_nerwik, masst_results)
 

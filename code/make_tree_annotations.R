@@ -144,6 +144,7 @@ option_list <- list(
   make_option(c("-i", "--input_tree"), type="character", default=NULL, help="Input Newick file path", metavar="character"),
   make_option(c("-l", "--input_masst"), type="character", default=NULL, help="Input library file path", metavar="character"),
   make_option(c("-r", "--input_redu"), type="character", default=NULL, help="Input REDU file path", metavar="character"),
+  make_option(c("-n", "--input_linage"), type="character", default=NULL, help="Input linage file path", metavar="character"),
   make_option(c("-u", "--usi"), type="character", default=NULL, help="USI", metavar="character"),
   make_option(c("-p", "--cid"), type="character", default=NULL, help="CID", metavar="character")
 )
@@ -158,7 +159,15 @@ cid = args$cid
 dt_redu <- fread(args$input_redu)
 #dt_redu[, n_samples := sum(!is.na(match_col)), by =.(uid_leaf)]
 
+
+
 dt_redu_match = dt_redu[!is.na(uid_leaf), .(NCBIDivision = NCBIDivision[1],UBERONBodyPartName = paste0(sort(unique(UBERONBodyPartName)), collapse= ', '), tax_name = tax_name[1], Database = unique(Database)[1]), by =.(uid_leaf)]
+
+
+# Load ReDU table
+dt_linage <- fread(args$input_linage)
+dt_linage = unique(dt_linage[, !c('NCBI', 'uid')], by ='uid_leaf')
+dt_redu_match = merge(dt_redu_match, dt_linage, by = 'uid_leaf', all.x = TRUE)
 
 # Load tree
 tree <- read.newick(args$input_tree)
@@ -171,7 +180,6 @@ print(colnames(dt_redu_match))
 
 dt_tree_ids_redu <- merge(dt_tree_ids, dt_redu_match, by = "uid_leaf", all.x = TRUE)
 
-fwrite(dt_tree_ids_redu, 'check_dt_tree_ids_redu.csv')
 
 # Load data tables
 dt_masst <- fread(args$input_masst)
@@ -212,13 +220,9 @@ if(nrow(dt_masst) > 0){
   dt_tree_ids_redu[!is.na(Cosine), detected := TRUE]
   dt_tree_ids_redu[, FeatureID := uid_leaf]
 
-  dt_tree_ids_redu = dt_tree_ids_redu[, .(Cosine = max(Cosine, na.rm = TRUE), `Matching Peaks` = `Matching Peaks`[which.max(`Matching Peaks`)], detected = any(detected)), by =.(FeatureID, tax_name, UBERONBodyPartName, NCBIDivision, Database)]
+  dt_tree_ids_redu = dt_tree_ids_redu[, .(Cosine = max(Cosine, na.rm = TRUE), `Matching Peaks` = `Matching Peaks`[which.max(`Matching Peaks`)], detected = any(detected)), by =.(FeatureID, tax_name, UBERONBodyPartName, NCBIDivision, Database, biotype,clade,class,cohort,family,genus,infraclass,infraorder,isolate,kingdom,order,parvorder,phylum,section,species,`species group`,`species subgroup`,strain,subclass,subcohort,subfamily,subgenus,subkingdom,suborder,subphylum,subsection,subspecies,subtribe,superclass,superfamily,superkingdom,superorder,tribe,varietas)]
 
   #dt_databases = unique(dt_redu[Database != '' & !is.na(Database), c('uid_leaf', 'Database', 'NCBIDivision')])
-
-
-  dt_tree_ids_redu[, tax_name_class := classify_taxa(unique(tax_name)), by =.(tax_name)]
-  dt_tree_ids_redu[, tax_name_class_spec := classify_taxa_detailed(unique(tax_name)), by =.(tax_name)]
 
 
   #fwrite(dt_tree_ids_redu[!is.na(uid_leaf) & uid_leaf != '', c('FeatureID', 'tax_name', 'detected', 'Cosine', 'Matching Peaks', 'UBERONBodyPartName', 'NCBIDivision')], paste0(c('masstResults_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
@@ -232,7 +236,8 @@ if(nrow(dt_masst) > 0){
     dt_tree_ids_redu[, tax_name_class_spec := NA]
 }
 
-fwrite(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '', c('FeatureID', 'tax_name', 'detected', 'Cosine', 'Matching Peaks', 'UBERONBodyPartName', 'NCBIDivision', 'Database', 'tax_name_class', 'tax_name_class_spec')], paste0(c('treeAnnotation_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
+
+fwrite(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '' & !grepl('mrcaott', FeatureID), c('FeatureID', 'tax_name', 'detected', 'Cosine', 'Matching Peaks', 'UBERONBodyPartName', 'NCBIDivision', 'Database', 'biotype','clade','class','cohort','family','genus','infraclass','infraorder','isolate','kingdom','order','parvorder','phylum','section','species','species group','species subgroup','strain','subclass','subcohort','subfamily','subgenus','subkingdom','suborder','subphylum','subsection','subspecies','subtribe','superclass','superfamily','superkingdom','superorder','tribe','varietas')], paste0(c('treeAnnotation_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
 
 
 
