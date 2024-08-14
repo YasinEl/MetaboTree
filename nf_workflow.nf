@@ -23,11 +23,11 @@ params.file = ''
 params.tree_type = 'treeoflife' //taxonomic
 
 // params for SarQL
-params.pubchemid = "x"
-params.molname = "chlorophyll"
+params.pubchemid = "53477895"
+params.molname = "LacCer_34_1_O2"
 
 // params to request masst results via usi
-params.usi = "$DATA_FOLDER/test_usis.tsv"
+params.usi = 'mzspec:MSV000079819:Control_160610180112:scan:6356' //"$DATA_FOLDER/test_usis.tsv"
 params.precursor_mz_tol = 0.05
 params.mz_tol = 0.05
 params.min_cos = 0.6
@@ -60,7 +60,7 @@ process RequestNCBIlinages {
 
     script:
     """
-    $TOOL_FOLDER/request_ncbi_linages.R $input_file "$DATA_FOLDER/all_redu_linages.csv" all_redu_linages_redu.csv
+    Rscript $TOOL_FOLDER/request_ncbi_linages.R $input_file $DATA_FOLDER/all_redu_linages.csv all_redu_linages_redu.csv
     """
 }
 
@@ -179,18 +179,17 @@ process getNCBIRecords {
 
 
 process VisualizeTreeData {
-    cache false
 
     conda "$baseDir/envs/r_env.yml" 
 
     publishDir "./nf_output", mode: 'copy'
 
     input:
-    each input_tree
-    each input_masst
-    each input_redu
-    each mol_plot
-    each mol_name
+    path input_tree
+    path input_masst
+    path input_redu
+    path mol_plot
+    val mol_name
 
     output:
     path "*.png"
@@ -343,7 +342,7 @@ process generateEmpressPlot {
 
     // conda "$baseDir/envs/qiime2-amplicon-2024.2-py38-linux-conda.yml"
 
-    conda "$baseDir/envs/env_empress_custom.yml"
+    conda "$baseDir/envs/pyEmpress_env.yml"
 
     publishDir "./nf_output", mode: 'copy'
 
@@ -352,11 +351,12 @@ process generateEmpressPlot {
     path masst_results
 
     output:
-    path "**"
+    path "empress_results.zip"
 
     script:
     """
     empress tree-plot --tree  $tree   --feature-metadata  $masst_results  --output-dir empress_results
+    zip -r empress_results.zip empress_results
     """
 }
 
@@ -425,9 +425,9 @@ workflow run_phyloMASST {
 
     
 
-    makeTreeAnnotationTable(tree_nerwik, masst_response_csv, redu_w_datasets, ncbi_linage)
+    treeAnnotationTable = makeTreeAnnotationTable(tree_nerwik, masst_response_csv, redu_w_datasets, ncbi_linage)
 
-    // generateEmpressPlot(tree_nerwik, masst_results)
+    generateEmpressPlot(tree_nerwik, treeAnnotationTable)
 
     
 }

@@ -83,7 +83,7 @@ if [ -f "${DIR}/opentree14.9tree.tgz" ] && [ ! -f "${DIR}/labelled_supertree.tre
     tar --extract --file="${DIR}/opentree14.9tree.tgz" --directory="${DIR}" --strip-components=1 "opentree14.9_tree/labelled_supertree/labelled_supertree.tre"
     if [ $? -eq 0 ]; then
         echo "labelled_supertree.tre has been extracted."
-        mv "${DIR}/opentree14.9_tree/labelled_supertree/labelled_supertree.tre" "${DIR}/" || { echo "Failed to move labelled_supertree.tre to ${DIR}"; exit 1; }
+        mv "${DIR}/labelled_supertree/labelled_supertree.tre" "${DIR}/" || { echo "Failed to move labelled_supertree.tre to ${DIR}"; exit 1; }
     else
         echo "Failed to extract labelled_supertree.tre."
     fi

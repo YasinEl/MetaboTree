@@ -1,0 +1,12 @@
+name: empress_processing_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - cython
+      - numpy<2
+      - empress
