@@ -23,18 +23,20 @@ params.file = ''
 params.tree_type = 'treeoflife' //taxonomic
 
 // params for SarQL
-params.pubchemid = "53477895"
+params.pubchemid = "1"
 params.molname = "LacCer_34_1_O2"
 
+params.sql = true
 // params to request masst results via usi
 params.usi = 'mzspec:MSV000079819:Control_160610180112:scan:6356' //"$DATA_FOLDER/test_usis.tsv"
+params.smiles = "CC[C@H](C)C(=O)O[C@H]1C[C@H](C=C2[C@H]1[C@H]([C@H](C=C2)C)CC[C@@H]3C[C@H](CC(=O)O3)O)C"
 params.precursor_mz_tol = 0.05
 params.mz_tol = 0.05
 params.min_cos = 0.6
 params.analog = false
 params.analog_mass_below = 130
 params.analog_mass_above = 200
-
+params.analog_exact = 0
 
 
 process PrepareReDU {
@@ -116,10 +118,32 @@ process RunFastMASST {
 
     script:
     """
-    python $TOOL_FOLDER/fast_search.py "$usi" --precursor_mz_tol $params.precursor_mz_tol --mz_tol $params.mz_tol --min_cos $params.min_cos ${params.analog ? '--analog' : ''} --analog_mass_below $params.analog_mass_below --analog_mass_above $params.analog_mass_above 
+    python  $TOOL_FOLDER/fast_search.py "$usi" --precursor_mz_tol $params.precursor_mz_tol --mz_tol $params.mz_tol --min_cos $params.min_cos ${params.analog ? '--analog' : ''} --analog_mass_below $params.analog_mass_below --analog_mass_above $params.analog_mass_above --analog_exact $params.analog_exact
     """
 }
 
+
+process RunSQLquery {
+
+    conda "$baseDir/envs/py_env.yml"
+
+    cache false
+
+
+    publishDir "./nf_output", mode: 'copy'
+    
+    input:
+    val usi
+
+    output:
+    //path "masst_results.json"
+    path "masst_records_hits.csv"
+
+    script:
+    """
+    python  $TOOL_FOLDER/masst_records_lookup.py "$params.smiles" --matching_peaks 4 --output masst_records_hits.csv
+    """
+}
 
 process RunWikidataSparql {
 
@@ -416,7 +440,15 @@ workflow run_phyloMASST {
         (redu_w_datasets, ncbi_linage) = Request_treeoflife_ids(redu_w_datasets, ncbi_linage, ncbi_to_ToL_file)
         tree_nerwik = CreateTOLTree(redu_w_datasets)
     }
-    masst_response_csv = RunFastMASST(params.usi)
+
+    if (params.sql == false){
+        masst_response_csv = RunFastMASST(params.usi)
+        
+    } else {
+        
+        masst_response_csv = RunSQLquery(params.usi)
+
+    }
     //(kingdom, superclass) = MakeTreeRings(redu)
 
 
