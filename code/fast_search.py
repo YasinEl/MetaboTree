@@ -35,11 +35,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Fetch MASST search results from GNPS")
     parser.add_argument("usi_or_lib_id", help="USI, Library ID, or TSV file containing USIs for the search")
     parser.add_argument("--precursor_mz_tol", type=float, default=0.02, help="Precursor M/Z tolerance")
+    parser.add_argument("--matching_peaks", type=int, default=6, help="number of matching peaks")
     parser.add_argument("--mz_tol", type=float, default=0.02, help="Fragment M/Z tolerance")
     parser.add_argument("--min_cos", type=float, default=0.7, help="Minimum cosine similarity")
     parser.add_argument("--analog", action='store_true', help="Enable analog search")
     parser.add_argument("--analog_mass_below", type=int, default=130, help="Analog mass below")
     parser.add_argument("--analog_mass_above", type=int, default=200, help="Analog mass above")
+    parser.add_argument("--analog_exact", type=float, default=0, help="Mass difference expected for analogue")
 
     args = parser.parse_args()
 
@@ -49,7 +51,7 @@ if __name__ == '__main__':
     else:
         usi_list = [args.usi_or_lib_id]
 
-    databases = ["gnpsdata_index", "gnpsdata_index_11_25_23"]
+    databases = ["gnpsdata_index", "panrepo_2024_10_11"]
     all_results = []
 
     for usi in usi_list:
@@ -85,7 +87,16 @@ if __name__ == '__main__':
     else:
         combined_df = pd.DataFrame(columns=['Delta Mass', 'USI', 'Charge', 'Cosine', 'Matching Peaks', 'Dataset', 'library', 'library_usi'])
 
-    combined_df = combined_df[(abs(combined_df['Delta Mass']) <= args.precursor_mz_tol) & (combined_df['Matching Peaks'] >= 3)] 
+
+    if args.analog == False:
+        combined_df = combined_df[(abs(combined_df['Delta Mass']) <= args.precursor_mz_tol) & 
+                                (combined_df['Matching Peaks'] >= args.matching_peaks)]
+    elif args.analog == True and args.analog_exact != 0:
+        combined_df = combined_df[(combined_df['Delta Mass'] > args.analog_exact - args.precursor_mz_tol) & 
+                                (combined_df['Delta Mass'] < args.analog_exact + args.precursor_mz_tol) & 
+                                (combined_df['Matching Peaks'] >= args.matching_peaks)]
+
+
     
     combined_df.to_csv('masst_results.csv', index=False)
 

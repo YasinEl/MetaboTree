@@ -11,6 +11,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Find matching SMILES and export masst_results_table entries")
     parser.add_argument("smiles", help="SMILES string to search")
     parser.add_argument("--matching_peaks", type=int, help="Matching peaks")
+    parser.add_argument("--masst_now_path", default = '', help="Intput novel MASST table")
     parser.add_argument("--output", default="results.tsv", help="Output TSV file")
     return parser.parse_args()
 
@@ -22,58 +23,68 @@ def check_smiles(smiles):
     return mol
 
 
-def fetch_distinct_smiles(conn):
+def fetch_and_match_smiles(conn, target_smiles):
+    # Check and convert the target SMILES to a molecule object
+    target_mol = Chem.MolFromSmiles(target_smiles)
+    if target_mol is None:
+        raise ValueError(f"Invalid SMILES: {target_smiles}")
+    #target_inchi_key = Chem.MolToInchiKey(target_mol)
+    target_inchi_key = Chem.MolToInchiKey(target_mol).split('-')[0]
+
     with conn.cursor() as cur:
-        print("Fetching distinct SMILES and associated spectrum_ids from gnps_library...")
+        print("Fetching SMILES and associated columns from gnps_library...")
         start_time = time.time()
+
+        # Fetch all relevant columns in one step
         cur.execute("""
-            SELECT smiles, array_agg(spectrum_id) AS spectrum_ids 
-            FROM (
-                SELECT smiles, spectrum_id, 
-                ROW_NUMBER() OVER (PARTITION BY collision_energy, Adduct, ms_manufacturer, ms_mass_analyzer, gnps_library_membership ORDER BY scan) AS row_num
-                FROM gnps_library
-            ) subquery
-            WHERE row_num <= 8
-            GROUP BY smiles
+            SELECT inchikey_smiles, spectrum_id, collision_energy, adduct, ms_manufacturer, 
+                   ms_mass_analyzer, gnps_library_membership, scan 
+            FROM gnps_library
         """)
+        
         rows = cur.fetchall()
-        print(f"Fetched {len(rows)} distinct SMILES in {time.time() - start_time:.2f} seconds.")
-    return rows
+        print(f"Fetched {len(rows)} rows in {time.time() - start_time:.2f} seconds.")
+        
+        # Convert the fetched rows to a DataFrame
+        col_names = [desc[0] for desc in cur.description]
+        df = pd.DataFrame(rows, columns=col_names)
+
+        print("Matching SMILES (ignoring stereochemistry)...")
+        start_matching_time = time.time()
+
+        # Only keep rows with valid SMILES and perform the structure match (exact match based on InChIKey)
+        df['inchi_key_first_block'] = df['inchikey_smiles'].apply(lambda inchi: inchi.split('-')[0] if inchi else None)
+        df_matched = df[df['inchi_key_first_block'] == target_inchi_key]
 
 
+        print(f"Found {len(df_matched)} matching SMILES in {time.time() - start_matching_time:.2f} seconds.")
+        
+        # If no matching SMILES were found, return an empty list
+        if df_matched.empty:
+            print("No matching SMILES found.")
+            return []
 
 
+        df_matched[['collision_energy', 'adduct', 'ms_manufacturer', 'ms_mass_analyzer', 'gnps_library_membership']] = df_matched[
+            ['collision_energy', 'adduct', 'ms_manufacturer', 'ms_mass_analyzer', 'gnps_library_membership']
+        ].fillna('unknown')
 
+        # Group by the required columns and limit to at most 8 rows per group
+        df_matched['row_num'] = df_matched.groupby(
+            ['collision_energy', 'adduct', 'ms_manufacturer', 'ms_mass_analyzer', 'gnps_library_membership']
+        ).cumcount() + 1
 
-def match_smiles(target_mol, smiles_list):
-    print("Checking for matching SMILES (ignoring stereochemistry) using InChIKey...")
-    start_time = time.time()
-    matching_spectrum_ids = []
+        
+        # Keep only the first 8 rows per group
+        df_limited = df_matched[df_matched['row_num'] <= 8].drop(columns=['row_num', 'inchi_key_first_block'])
 
-    # Generate InChIKey for the target molecule
-    target_inchi = Chem.MolToInchiKey(target_mol).split('-')[0]  # Take the first part of InChIKey for non-stereochemical match
+        print(f"Limited to {len(df_limited)} rows after grouping.")
 
-    for smiles, spectrum_ids in smiles_list:  # Each row has SMILES and associated spectrum_ids
-        if smiles is None:
-            print("Skipping NoneType SMILES.")
-            continue
+        print(df_limited['spectrum_id'].unique().tolist())
 
-        mol = Chem.MolFromSmiles(smiles)
-        if mol is None:
-            print(f"Skipping invalid SMILES: {smiles}")
-            continue
-
-        # Generate InChIKey for the current molecule
-        mol_inchi = Chem.MolToInchiKey(mol).split('-')[0]  # Take the first part for non-stereochemical match
-
-        # Check if InChIKeys match (ignoring stereochemistry)
-        if target_inchi == mol_inchi:
-            matching_spectrum_ids.extend(spectrum_ids)  # Add all associated spectrum_ids for this SMILES
-
-    print(f"Found {len(matching_spectrum_ids)} matching spectrum_ids in {time.time() - start_time:.2f} seconds.")
-    return matching_spectrum_ids
-
-
+        
+        # Return the unique spectrum_ids
+        return df_limited['spectrum_id'].unique().tolist()
 
 
 
@@ -81,10 +92,6 @@ def fetch_masst_results(conn, spectrum_ids, matching_peaks):
     with conn.cursor() as cur:
         print("Fetching masst_results_table entries for matching spectrum_ids...")
         start_time = time.time()
-
-        print(len(spectrum_ids))
-
-        print(spectrum_ids)
         
         # Fetch rows by spectrum_id
         query = """
@@ -125,7 +132,7 @@ def fetch_masst_results(conn, spectrum_ids, matching_peaks):
 
 
 
-def save_results_to_tsv(rows, output_file):
+def save_results_to_tsv(rows, output_file, masst_novel):
     print(f"Saving results to {output_file}...")
     start_time = time.time()
     df = pd.DataFrame(rows)
@@ -133,6 +140,12 @@ def save_results_to_tsv(rows, output_file):
     df.rename(columns={'mri': 'USI'}, inplace=True)
     df.rename(columns={'cosine': 'Cosine'}, inplace=True) 
     df.rename(columns={'matching_peaks': 'Matching Peaks'}, inplace=True)
+
+    # Add the novel MASST table
+    if masst_novel != '':
+        df_novel = pd.read_csv(masst_novel)
+        if len(df_novel) > 0:
+            df = pd.concat([df, df_novel], ignore_index=True)
 
 
     df.to_csv(output_file, index=False)
@@ -142,12 +155,6 @@ def save_results_to_tsv(rows, output_file):
 def main():
     args = parse_arguments()
 
-    # Check SMILES validity
-    try:
-        target_mol = check_smiles(args.smiles)
-    except ValueError as e:
-        print(e)
-        return
 
     # Database connection
    # os.environ['PGPASSWORD'] = '9421'
@@ -160,11 +167,9 @@ def main():
     )
 
     try:
-        # Step 1: Fetch distinct SMILES from gnps_library
-        smiles_list = fetch_distinct_smiles(conn)
 
-        # Step 2: Find matching SMILES (ignoring stereochemistry)
-        matching_lib_ids = match_smiles(target_mol, smiles_list)
+        # Step 1: Find matching SMILES (ignoring stereochemistry)
+        matching_lib_ids = fetch_and_match_smiles(conn, args.smiles)
 
         if not matching_lib_ids:
             print("No matching SMILES found.")
@@ -174,7 +179,7 @@ def main():
         masst_results = fetch_masst_results(conn, matching_lib_ids, args.matching_peaks)
 
         # Step 4: Save results to TSV
-        save_results_to_tsv(masst_results, args.output)
+        save_results_to_tsv(masst_results, args.output, args.masst_now_path)
 
     finally:
         conn.close()

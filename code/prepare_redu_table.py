@@ -39,9 +39,9 @@ def main():
     dt_redu = dt_redu.drop(columns=['USI'])
 
 
-    unique_msvs = extract_unique_msv([args.masst1, args.masst2])
+    #unique_msvs = extract_unique_msv([args.masst1, args.masst2])
     
-    dt_redu = dt_redu[dt_redu['ATTRIBUTE_DatasetAccession'].isin(unique_msvs)]
+    #dt_redu = dt_redu[dt_redu['ATTRIBUTE_DatasetAccession'].isin(unique_msvs)]
 
 
     dt_redu.to_csv('redu.tsv', sep='\t', index=False)

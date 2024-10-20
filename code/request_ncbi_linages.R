@@ -50,14 +50,19 @@ data <- fread(input_file)
 data[, ncbiid := str_extract(NCBITaxonomy, "^[^|]*")]
 
 # Filter and prepare NCBI IDs
-ncbiid <- na.omit(unique(data[!(ncbiid %in% unique(data_redu_linages$ncbi))]$ncbiid))
+ncbiid <- na.omit(unique(data[!(ncbiid %in% unique(data_redu_linages$NCBI))]$ncbiid))
 
+ncbiid <- as.numeric(ncbiid)
+ncbiid <- ncbiid[!is.na(ncbiid)]
 
 if (length(ncbiid) > 0){
 
 
-ncbiid <- as.numeric(ncbiid)
-ncbiid <- ncbiid[!is.na(ncbiid)]
+
+
+print(paste("Number of NCBI IDs to fetch:", length(ncbiid)))
+
+print(ncbiid)
 
 
 # Initialize variables for loop
@@ -86,23 +91,25 @@ for (i in seq_along(ncbiid)) {
 # Combine results and write to file
 dt_redu_linages <- rbindlist(collect_dt)
 
+# Compute frequency of each name within each rank
+dt_redu_linages[, freq := .N, by = .(rank, name)]
+
+# Sort by frequency and then by name to ensure selection of the less common name
+setorder(dt_redu_linages, rank, freq, name)
+
+# Remove duplicate ranks within each ncbi group, keeping the less common name
+dt_redu_linages <- dt_redu_linages[, .SD[1], by = .(ncbi, rank)]
+
+# Transform the data.table using dcast
+dt_redu_linages <- dcast(dt_redu_linages, ncbi ~ rank, value.var = "name")
+
+setnames(dt_redu_linages, 'ncbi', 'NCBI')
+
 data_redu_linages = rbindlist(list(dt_redu_linages, data_redu_linages))
 
 }
 
 
-# Compute frequency of each name within each rank
-data_redu_linages[, freq := .N, by = .(rank, name)]
 
-# Sort by frequency and then by name to ensure selection of the less common name
-setorder(data_redu_linages, rank, freq, name)
-
-# Remove duplicate ranks within each ncbi group, keeping the less common name
-data_redu_linages <- data_redu_linages[, .SD[1], by = .(ncbi, rank)]
-
-# Transform the data.table using dcast
-data_redu_linages <- dcast(data_redu_linages, ncbi ~ rank, value.var = "name")
-
-setnames(data_redu_linages, 'ncbi', 'NCBI')
 
 fwrite(data_redu_linages, output_file)

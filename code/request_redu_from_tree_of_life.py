@@ -23,7 +23,16 @@ def main(file_path, linage_path, ncbi_to_ToL_file_path):
 
 
     df = df.merge(df_ncbi_to_ToL, on='NCBI',  how='left')   
-    df_linage = df_linage.merge(df_ncbi_to_ToL, on='NCBI',  how='left')  
+    df_linage = df_linage.merge(df_ncbi_to_ToL, on='NCBI', how='left', suffixes=('', '_dup'))
+
+    # Fill missing values in original columns with values from the duplicated ones
+    for col in df_linage.columns:
+        if col.endswith('_dup'):
+            original_col = col[:-4]
+            df_linage[original_col] = df_linage[original_col].fillna(df_linage[col])
+
+    # Drop the duplicated columns
+    df_linage = df_linage.drop(columns=[col for col in df_linage.columns if col.endswith('_dup')])
 
 
     # Save the modified DataFrame to a CSV file

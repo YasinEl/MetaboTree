@@ -29,7 +29,8 @@ params.molname = "LacCer_34_1_O2"
 params.sql = true
 // params to request masst results via usi
 params.usi = 'mzspec:MSV000079819:Control_160610180112:scan:6356' //"$DATA_FOLDER/test_usis.tsv"
-params.smiles = "CC[C@H](C)C(=O)O[C@H]1C[C@H](C=C2[C@H]1[C@H]([C@H](C=C2)C)CC[C@@H]3C[C@H](CC(=O)O3)O)C"
+params.smiles = "CC1CCC2C(C)C(=O)OC3OC4(C)CCC1C32OO4"
+params.matching_peaks = 6
 params.precursor_mz_tol = 0.05
 params.mz_tol = 0.05
 params.min_cos = 0.6
@@ -62,7 +63,7 @@ process RequestNCBIlinages {
 
     script:
     """
-    Rscript $TOOL_FOLDER/request_ncbi_linages.R $input_file $DATA_FOLDER/all_redu_linages.csv all_redu_linages_redu.csv
+    Rscript $TOOL_FOLDER/request_ncbi_linages.R $input_file $DATA_FOLDER/linage_records.csv all_redu_linages_redu.csv
     """
 }
 
@@ -108,6 +109,8 @@ process RunFastMASST {
     conda "$baseDir/envs/py_env.yml"
 
     publishDir "./nf_output", mode: 'copy'
+
+    cache false
     
     input:
     val usi
@@ -118,7 +121,7 @@ process RunFastMASST {
 
     script:
     """
-    python  $TOOL_FOLDER/fast_search.py "$usi" --precursor_mz_tol $params.precursor_mz_tol --mz_tol $params.mz_tol --min_cos $params.min_cos ${params.analog ? '--analog' : ''} --analog_mass_below $params.analog_mass_below --analog_mass_above $params.analog_mass_above --analog_exact $params.analog_exact
+    python  $TOOL_FOLDER/fast_search.py "$usi" --precursor_mz_tol $params.precursor_mz_tol --matching_peaks $params.matching_peaks --mz_tol $params.mz_tol --min_cos $params.min_cos ${params.analog ? '--analog' : ''} --analog_mass_below $params.analog_mass_below --analog_mass_above $params.analog_mass_above --analog_exact $params.analog_exact
     """
 }
 
@@ -134,6 +137,7 @@ process RunSQLquery {
     
     input:
     val usi
+    path masst_results
 
     output:
     //path "masst_results.json"
@@ -141,7 +145,7 @@ process RunSQLquery {
 
     script:
     """
-    python  $TOOL_FOLDER/masst_records_lookup.py "$params.smiles" --matching_peaks 4 --output masst_records_hits.csv
+    python  $TOOL_FOLDER/masst_records_lookup.py "$params.smiles" --matching_peaks $params.matching_peaks --output masst_records_hits.csv --masst_now_path "$masst_results"
     """
 }
 
@@ -441,12 +445,12 @@ workflow run_phyloMASST {
         tree_nerwik = CreateTOLTree(redu_w_datasets)
     }
 
-    if (params.sql == false){
+    
         masst_response_csv = RunFastMASST(params.usi)
         
-    } else {
+    if (params.sql == true){
         
-        masst_response_csv = RunSQLquery(params.usi)
+        masst_response_csv = RunSQLquery(params.usi, masst_response_csv)
 
     }
     //(kingdom, superclass) = MakeTreeRings(redu)
