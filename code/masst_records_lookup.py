@@ -4,7 +4,7 @@ import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import rdMolHash
 import psycopg2
-#from tqdm import tqdm
+from tqdm import tqdm
 
 
 def parse_arguments():
@@ -23,21 +23,20 @@ def check_smiles(smiles):
     return mol
 
 
-def fetch_and_match_smiles(conn, target_smiles):
+def fetch_and_match_smiles(conn, target_smiles, substructure_search=True):
     # Check and convert the target SMILES to a molecule object
     target_mol = Chem.MolFromSmiles(target_smiles)
     if target_mol is None:
         raise ValueError(f"Invalid SMILES: {target_smiles}")
-    #target_inchi_key = Chem.MolToInchiKey(target_mol)
     target_inchi_key = Chem.MolToInchiKey(target_mol).split('-')[0]
-
+    
     with conn.cursor() as cur:
         print("Fetching SMILES and associated columns from gnps_library...")
         start_time = time.time()
-
+    
         # Fetch all relevant columns in one step
         cur.execute("""
-            SELECT inchikey_smiles, spectrum_id, collision_energy, adduct, ms_manufacturer, 
+            SELECT inchikey_smiles, smiles, spectrum_id, collision_energy, adduct, ms_manufacturer, 
                    ms_mass_analyzer, gnps_library_membership, scan 
             FROM gnps_library
         """)
@@ -48,50 +47,80 @@ def fetch_and_match_smiles(conn, target_smiles):
         # Convert the fetched rows to a DataFrame
         col_names = [desc[0] for desc in cur.description]
         df = pd.DataFrame(rows, columns=col_names)
+    
+        if not substructure_search:
+            print("Matching SMILES (ignoring stereochemistry)...")
+            start_matching_time = time.time()
+    
+            # Only keep rows with valid SMILES and perform the structure match (exact match based on InChIKey)
+            df['inchi_key_first_block'] = df['inchikey_smiles'].apply(
+                lambda inchi: inchi.split('-')[0] if inchi else None)
+            df_matched = df[df['inchi_key_first_block'] == target_inchi_key]
+    
+            print(f"Found {len(df_matched)} matching SMILES in {time.time() - start_matching_time:.2f} seconds.")
+        else:
+            print("Performing substructure search...")
+            start_matching_time = time.time()
+            # Get unique SMILES
+            unique_smiles = df['smiles'].dropna().unique()
+            print(f"Total unique SMILES to process: {len(unique_smiles)}")
+            # Create a dict mapping SMILES to Mol
+            smiles_to_mol = {}
+            for smiles in unique_smiles:
+                mol = Chem.MolFromSmiles(smiles)
+                if mol is not None:
+                    smiles_to_mol[smiles] = mol
+                else:
+                    print(f"Invalid SMILES encountered and skipped: {smiles}")
 
-        print("Matching SMILES (ignoring stereochemistry)...")
-        start_matching_time = time.time()
+            # Perform substructure matching
+            matching_smiles = []
+            for smiles, mol in tqdm(smiles_to_mol.items(), desc="Substructure Matching", total=len(smiles_to_mol)):
+                if mol.HasSubstructMatch(target_mol):
+                    matching_smiles.append(smiles)
 
-        # Only keep rows with valid SMILES and perform the structure match (exact match based on InChIKey)
-        df['inchi_key_first_block'] = df['inchikey_smiles'].apply(lambda inchi: inchi.split('-')[0] if inchi else None)
-        df_matched = df[df['inchi_key_first_block'] == target_inchi_key]
-
-
-        print(f"Found {len(df_matched)} matching SMILES in {time.time() - start_matching_time:.2f} seconds.")
-        
+            print(f"Found {len(matching_smiles)} matching SMILES in {time.time() - start_matching_time:.2f} seconds.")
+            # Filter df to include only rows where 'inchikey_smiles' is in matching_smiles
+            df_matched = df[df['smiles'].isin(matching_smiles)]
+    
         # If no matching SMILES were found, return an empty list
         if df_matched.empty:
-            print("No matching SMILES found.")
+            print("No matching structures found.")
             return []
-
-
+    
         df_matched[['collision_energy', 'adduct', 'ms_manufacturer', 'ms_mass_analyzer', 'gnps_library_membership']] = df_matched[
             ['collision_energy', 'adduct', 'ms_manufacturer', 'ms_mass_analyzer', 'gnps_library_membership']
         ].fillna('unknown')
-
+    
         # Group by the required columns and limit to at most 8 rows per group
         df_matched['row_num'] = df_matched.groupby(
-            ['collision_energy', 'adduct', 'ms_manufacturer', 'ms_mass_analyzer', 'gnps_library_membership']
+            ['collision_energy', 'adduct', 'ms_manufacturer', 'ms_mass_analyzer', 'gnps_library_membership', 'inchikey_smiles']
         ).cumcount() + 1
-
-        
+    
         # Keep only the first 8 rows per group
-        df_limited = df_matched[df_matched['row_num'] <= 8].drop(columns=['row_num', 'inchi_key_first_block'])
-
+        df_limited = df_matched[df_matched['row_num'] <= 8]
+        # Drop columns not needed
+        if not substructure_search:
+            df_limited = df_limited.drop(columns=['row_num'])
+        else:
+            df_limited = df_limited.drop(columns=['row_num'])
+            # No need to drop 'mol' or 'substruct_match' as we didn't add them in this version
+    
         print(f"Limited to {len(df_limited)} rows after grouping.")
-
         print(df_limited['spectrum_id'].unique().tolist())
-
         
         # Return the unique spectrum_ids
-        return df_limited['spectrum_id'].unique().tolist()
+        return df_limited[["spectrum_id", "inchi_key_first_block"]]#['spectrum_id'].unique().tolist()
 
 
 
-def fetch_masst_results(conn, spectrum_ids, matching_peaks):
+
+def fetch_masst_results(conn, lib_table, matching_peaks):
     with conn.cursor() as cur:
         print("Fetching masst_results_table entries for matching spectrum_ids...")
         start_time = time.time()
+
+        spectrum_ids = lib_table['spectrum_id'].unique().tolist()
         
         # Fetch rows by spectrum_id from masst_results_table
         query = """
@@ -144,6 +173,9 @@ def fetch_masst_results(conn, spectrum_ids, matching_peaks):
         # Filter rows where 'matching_peaks' is greater than or equal to the threshold
         filtered_df = df[df['matching_peaks'] >= matching_peaks]
 
+
+        filtered_df = pd.merge(filtered_df, lib_table, on='spectrum_id', how='inner')
+
         # Convert the filtered DataFrame back to a list of rows (if needed)
         filtered_rows = filtered_df.to_dict(orient='records')
         print(f"Filtered down to {len(filtered_rows)} rows in {time.time() - start_filter_time:.2f} seconds.")
@@ -192,7 +224,7 @@ def main():
         # Step 1: Find matching SMILES (ignoring stereochemistry)
         matching_lib_ids = fetch_and_match_smiles(conn, args.smiles)
 
-        if not matching_lib_ids:
+        if not matching_lib_ids["spectrum_id"].unique().tolist():
             print("No matching SMILES found.")
             return
 
