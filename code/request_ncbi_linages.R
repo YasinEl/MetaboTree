@@ -105,7 +105,13 @@ dt_redu_linages <- dcast(dt_redu_linages, ncbi ~ rank, value.var = "name")
 
 setnames(dt_redu_linages, 'ncbi', 'NCBI')
 
-data_redu_linages = rbindlist(list(dt_redu_linages, data_redu_linages))
+
+print(colnames(dt_redu_linages))
+
+
+print(colnames(data_redu_linages))
+
+data_redu_linages = rbindlist(list(dt_redu_linages, data_redu_linages), fill = TRUE)
 
 }
 

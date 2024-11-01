@@ -93,7 +93,7 @@ def fetch_masst_results(conn, spectrum_ids, matching_peaks):
         print("Fetching masst_results_table entries for matching spectrum_ids...")
         start_time = time.time()
         
-        # Fetch rows by spectrum_id
+        # Fetch rows by spectrum_id from masst_results_table
         query = """
         SELECT *
         FROM masst_results_table
@@ -101,34 +101,55 @@ def fetch_masst_results(conn, spectrum_ids, matching_peaks):
         """
         cur.execute(query, (spectrum_ids,))
         rows = cur.fetchall()
-
         col_names = [desc[0] for desc in cur.description]
         print(f"Fetched {len(rows)} rows in {time.time() - start_time:.2f} seconds.")
+        
+        # Extract mri_ids to fetch corresponding mri values from unique_mri
+        mri_ids = list({row[col_names.index("mri_id")] for row in rows if row[col_names.index("mri_id")] is not None})
+
+        
+         # Fetch mri values from unique_mri table in chunks
+        chunk_size = 1000  # Adjust this chunk size as needed
+        mri_map = {}
+        for i in range(0, len(mri_ids), chunk_size):
+            chunk = mri_ids[i:i + chunk_size]
+            query_mri = """
+            SELECT id, mri
+            FROM unique_mri
+            WHERE id = ANY(%s)
+            """
+            cur.execute(query_mri, (chunk,))
+            mri_map.update({mri_id: mri for mri_id, mri in cur.fetchall()})
+
+        # Add mri values to fetched rows in-memory
+        rows = [
+            dict(zip(col_names + ["mri"], row + (mri_map.get(row[col_names.index("mri_id")]),)))
+            for row in rows
+        ]
         
         # Filter in-memory by matching_peaks
         print(f"Filtering rows with matching_peaks >= {matching_peaks}...")
         start_filter_time = time.time()
         
-        df = pd.DataFrame(rows, columns=col_names)
-
+        df = pd.DataFrame(rows, columns=col_names + ["mri"])
 
         # Convert 'matching_peaks' column to numeric, coercing errors to NaN
         df['matching_peaks'] = pd.to_numeric(df['matching_peaks'], errors='coerce')
 
         df = df.dropna(subset=['matching_peaks'])
 
-        # Ensure matching_peaks is an integer (or float) for comparison
+        # Ensure matching_peaks is a float for comparison
         df['matching_peaks'] = df['matching_peaks'].astype(float)
 
         # Filter rows where 'matching_peaks' is greater than or equal to the threshold
         filtered_df = df[df['matching_peaks'] >= matching_peaks]
-
 
         # Convert the filtered DataFrame back to a list of rows (if needed)
         filtered_rows = filtered_df.to_dict(orient='records')
         print(f"Filtered down to {len(filtered_rows)} rows in {time.time() - start_filter_time:.2f} seconds.")
         
     return filtered_rows
+
 
 
 

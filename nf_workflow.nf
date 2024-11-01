@@ -84,25 +84,6 @@ process CreateTaxTree {
     """
 }
 
-process Process_MASST_Wikidata_Pubchem_Results {
-    conda "$baseDir/envs/py_env.yml"
-
-    input:
-    path redu_tsv
-    path masst_csv
-    path sparql_csv
-    path ncbi_response_csv
-
-    output:
-    path "masst_by_ncbi_output.tsv"
-    path "sparql_by_ncbi_output.tsv"
-    path "ncbi_by_ncbi_output.tsv"
-
-    script:
-    """
-    python $TOOL_FOLDER/process_masst_wikidata_pubchem_results.py $redu_tsv $masst_csv $sparql_csv $ncbi_response_csv
-    """
-}
 
 process RunFastMASST {
 
@@ -170,22 +151,6 @@ process RunWikidataSparql {
     """
 }
 
-
-process MakeTreeRings {
-    conda "$baseDir/envs/r_env.yml"
-
-    input:
-    path redu_tsv
-    path masst_csv
-
-    output:
-    path "masst_by_ncbi_output.tsv"
-
-    script:
-    """
-    Rscript $TOOL_FOLDER/prepare_MASST_annotations.R $redu_tsv $masst_csv masst_by_ncbi_output.tsv
-    """
-}
 
 process getNCBIRecords {
     conda "$baseDir/envs/py_env.yml"
@@ -291,24 +256,6 @@ process Request_treeoflife_ids {
     script:
     """
     python $TOOL_FOLDER/request_redu_from_tree_of_life.py $input_redu $input_linage $ncbi_to_ToL_file
-    """
-}
-
-
-process Update_ReDU_df_with_TOL {
-    conda "$baseDir/envs/py_env.yml"
-
-
-    input:
-    path treeoflife_response
-    path redu
-
-    output:
-    path "redu_updated.csv"
-
-    script:
-    """
-    python $TOOL_FOLDER/add_tree_of_life_info_to_redu.py --json_path $treeoflife_response --redu_path $redu
     """
 }
 
@@ -426,11 +373,10 @@ workflow run_phyloMASST {
     (cids, mol_name) = GetStereoCIDs(params.pubchemid)
     mol_plot = plot_molecule(params.pubchemid)
     sparql_response_csv = RunWikidataSparql(cids)
-    // ncbi_response_csv = getNCBIRecords(cids)
 
 
     redu = PrepareReDU()
-    redu_w_datasets = Make_ID_table(redu, sparql_response_csv)//, ncbi_response_csv)
+    redu_w_datasets = Make_ID_table(redu, sparql_response_csv)
 
     ncbi_linage = RequestNCBIlinages(redu_w_datasets)
 
@@ -453,9 +399,6 @@ workflow run_phyloMASST {
         masst_response_csv = RunSQLquery(params.usi, masst_response_csv)
 
     }
-    //(kingdom, superclass) = MakeTreeRings(redu)
-
-
 
     (ggtree_plot, masst_results) = VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets, mol_plot, mol_name)  
 
