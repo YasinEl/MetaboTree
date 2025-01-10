@@ -97,6 +97,9 @@ if __name__ == '__main__':
                                 (combined_df['Matching Peaks'] >= args.matching_peaks)]
 
 
+    # TODO adapt ro sql type analysis output 
+    # e.g. name by delta mass; 
+
     
     combined_df.to_csv('masst_results.csv', index=False)
 

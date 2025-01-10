@@ -29,6 +29,11 @@ params.molname = "LacCer_34_1_O2"
 params.sql = true
 // params to request masst results via usi
 params.usi = 'mzspec:MSV000079819:Control_160610180112:scan:6356' //"$DATA_FOLDER/test_usis.tsv"
+
+params.structure_file = ''
+params.match_type = 'exact'
+params.smiles_type = 'smiles'
+params.smiles_name = 'only'
 params.smiles = "CC1CCC2C(C)C(=O)OC3OC4(C)CCC1C32OO4"
 params.matching_peaks = 6
 params.precursor_mz_tol = 0.05
@@ -91,7 +96,7 @@ process RunFastMASST {
 
     publishDir "./nf_output", mode: 'copy'
 
-    cache false
+    // cache false
     
     input:
     val usi
@@ -113,7 +118,6 @@ process RunSQLquery {
 
     cache false
 
-
     publishDir "./nf_output", mode: 'copy'
     
     input:
@@ -126,7 +130,7 @@ process RunSQLquery {
 
     script:
     """
-    python  $TOOL_FOLDER/masst_records_lookup.py "$params.smiles" --matching_peaks $params.matching_peaks --output masst_records_hits.csv --masst_now_path "$masst_results"
+    python $TOOL_FOLDER/masst_records_lookup.py --smiles "$params.smiles" --structure_file $DATA_FOLDER/$params.structure_file  --matching_peaks $params.matching_peaks --match_type $params.match_type --smiles_type $params.smiles_type --smiles_name $params.smiles_name  --output masst_records_hits.csv --masst_now_path "$masst_results"
     """
 }
 
@@ -400,7 +404,7 @@ workflow run_phyloMASST {
 
     }
 
-    (ggtree_plot, masst_results) = VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets, mol_plot, mol_name)  
+    //(ggtree_plot, masst_results) = VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets, mol_plot, mol_name)  
 
     
 

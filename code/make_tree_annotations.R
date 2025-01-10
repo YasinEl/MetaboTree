@@ -185,16 +185,40 @@ dt_tree_ids_redu <- merge(dt_tree_ids, dt_redu_match, by = "uid_leaf", all.x = T
 dt_masst <- fread(args$input_masst)
 
 if(nrow(dt_masst) > 0){
+
+  print(nrow(dt_masst))
+  dt_masst = dt_masst[smiles_name != '']
+  print(nrow(dt_masst))
+
+
   dt_masst[, match_col := USI2MASST_matchCol(unique(USI)), by =.(USI)]
 
 
-  dt_masst[, max_cosine := max(Cosine), by = match_col]
-  max_indices <- dt_masst[, .I[which.max(Cosine)], by = match_col]$V1
+  dt_masst[, max_cosine := max(Cosine), by = .(match_col, smiles_name)]
+
+  keep_cols = c('Cosine', 'Matching Peaks', 'match_col', 'smiles_name')
+
+  if('inchi_key_first_block' %in% colnames(dt_masst)){
+    dt_masst[, inchi_key_first_block_count_by_usi := paste0(unique(inchi_key_first_block), collapse=','), by = .(match_col, smiles_name)]
+    keep_cols = c(keep_cols, 'inchi_key_first_block_count_by_usi')
+  }
+
+  max_indices <- dt_masst[, .I[which.max(Cosine)], by = .(match_col, smiles_name)]$V1
   dt_masst <- dt_masst[max_indices]
-  dt_masst <- unique(dt_masst[, c('Cosine', 'Matching Peaks', 'match_col')])
 
-  dt_masst <- dt_masst[, .(Cosine = max(Cosine), `Matching Peaks` = max(`Matching Peaks`[which.max(Cosine)])), by = .(match_col)]
 
+  print('cosine col filter')
+
+  dt_masst <- unique(dt_masst[, ..keep_cols])
+
+  print('stats iteration 1')
+
+  dt_masst <- dt_masst[, .(Cosine = max(Cosine), `Matching Peaks` = max(`Matching Peaks`[which.max(Cosine)]), inchi_key_first_block_count_by_usi = inchi_key_first_block_count_by_usi[1]), by = .(match_col, smiles_name)]
+
+
+  dt_masst <- dcast(dt_masst, match_col ~ smiles_name, 
+                   value.var = c("Cosine", "Matching Peaks", "inchi_key_first_block_count_by_usi"))
+  
   print('dt_tree_ids_redu')
   print(head(dt_tree_ids_redu))
   print(colnames(dt_tree_ids_redu))
@@ -214,16 +238,88 @@ if(nrow(dt_masst) > 0){
 
   fwrite(dt_redu_match, 'dt_redu_match.csv')
 
-  dt_tree_ids_redu <- merge(dt_tree_ids_redu, dt_redu_match, by = "uid_leaf", all = TRUE)
+  dt_tree_ids_redu <- merge(dt_tree_ids_redu, dt_redu_match, by = "uid_leaf", all.x = TRUE, all.y = FALSE)
 
-  dt_tree_ids_redu[, detected := FALSE]
-  dt_tree_ids_redu[!is.na(Cosine), detected := TRUE]
+  #dt_tree_ids_redu[, detected := FALSE]
+  #dt_tree_ids_redu[, detected := any(!is.na(.SD)), .SDcols = patterns("Cosine")]
   dt_tree_ids_redu[, FeatureID := uid_leaf]
 
-  dt_tree_ids_redu = dt_tree_ids_redu[, .(Cosine = max(Cosine, na.rm = TRUE), `Matching Peaks` = `Matching Peaks`[which.max(`Matching Peaks`)], detected = any(detected)), by =.(FeatureID, tax_name, UBERONBodyPartName, NCBIDivision, Database, biotype,clade,class,cohort,family,genus,infraclass,infraorder,isolate,kingdom,order,parvorder,phylum,section,species,`species group`,`species subgroup`,strain,subclass,subcohort,subfamily,subgenus,subkingdom,suborder,subphylum,subsection,subspecies,subtribe,superclass,superfamily,superkingdom,superorder,tribe,varietas)]
 
+  print('stats on casted cols:')
+  #dt_tree_ids_redu = dt_tree_ids_redu[, .(Cosine = max(Cosine, na.rm = TRUE), `Matching Peaks` = `Matching Peaks`[which.max(`Matching Peaks`)], detected = any(detected), inchi_key_first_block_count = length(unique(unlist(unlist(strsplit(unique(inchi_key_first_block_count_by_usi), ',')))))), by =.(FeatureID, tax_name, UBERONBodyPartName, NCBIDivision, Database, biotype,clade,class,cohort,family,genus,infraclass,infraorder,isolate,kingdom,order,parvorder,phylum,section,species,`species group`,`species subgroup`,strain,subclass,subcohort,subfamily,subgenus,subkingdom,suborder,subphylum,subsection,subspecies,subtribe,superclass,superfamily,superkingdom,superorder,tribe,varietas)]
+all_columns <- names(dt_tree_ids_redu)
+cosine_suffixes <- unique(sub("Cosine_", "", grep("^Cosine_", all_columns, value = TRUE)))
+matching_peaks_suffixes <- unique(sub("Matching Peaks_", "", grep("^Matching Peaks_", all_columns, value = TRUE)))
+inchi_key_suffixes <- unique(sub("inchi_key_first_block_count_by_usi_", "", grep("^inchi_key_first_block_count_by_usi_", all_columns, value = TRUE)))
+
+# Ensure we have a consistent list of suffixes across all patterns
+suffixes <- intersect(intersect(cosine_suffixes, matching_peaks_suffixes), inchi_key_suffixes)
+
+# Step 2: Initialize a list to store results for each suffix
+results_list <- list()
+
+# Step 3: Process each suffix
+for (suffix in suffixes) {
+
+dt_process = copy(dt_tree_ids_redu)
+
+
+    # Select relevant columns and rename to standard temporary names
+    dt_temp <- dt_process[, .(
+        FeatureID,
+        UBERONBodyPartName,
+        Cosine_temp = get(paste0("Cosine_", suffix)),
+        Matching_Peaks_temp = get(paste0("Matching Peaks_", suffix)),
+        inchi_key_first_block_count_temp = get(paste0("inchi_key_first_block_count_by_usi_", suffix))
+    )]
+
+dt_temp = dt_temp[Cosine_temp > 0]
+
+    fwrite(dt_temp, 'check_dt_temp.csv')
+    
+    # Perform calculations on the renamed columns
+    dt_temp <- dt_temp[, .(
+        Cosine = max(Cosine_temp, na.rm = TRUE),
+        Matching_Peaks = Matching_Peaks_temp[which.max(ifelse(is.na(Matching_Peaks_temp), -Inf, Matching_Peaks_temp))],
+        inchi_key_first_block_count = {
+            unique_values <- unique(inchi_key_first_block_count_temp[!is.na(inchi_key_first_block_count_temp)])
+            if (length(unique_values) == 0) 0L else length(unique(unlist(strsplit(as.character(unique_values), ","))))
+        }
+    ), by = .(FeatureID, UBERONBodyPartName)]
+    
+fwrite(dt_temp, 'check_dt_temp2.csv')
+
+    # Rename columns back to specific names with suffix
+    setnames(dt_temp, c("Cosine", "Matching_Peaks", "inchi_key_first_block_count"),
+                     c(paste0("Cosine_", suffix), paste0("Matching_Peaks_", suffix), paste0("inchi_key_first_block_count_by_usi_", suffix)))
+    
+    # Store result in the list
+    results_list[[suffix]] <- dt_temp
+}
+
+# Step 4: Merge all results tables by FeatureID and UBERONBodyPartName
+final_result <- Reduce(function(dt1, dt2) merge(dt1, dt2, by = c("FeatureID", "UBERONBodyPartName"), all = TRUE), results_list)
+
+fwrite(final_result, 'check_final_result.csv')
+
+# Step 5: Add back any other columns needed after merging
+dt_tree_ids_redu <- merge(final_result, dt_tree_ids_redu[, .(FeatureID, UBERONBodyPartName, 
+                                                         tax_name, NCBIDivision, Database, biotype, 
+                                                         clade, class, cohort, family, genus, infraclass, 
+                                                         infraorder, isolate, kingdom, order, parvorder, 
+                                                         phylum, section, species, `species group`, 
+                                                         `species subgroup`, strain, subclass, subcohort, 
+                                                         subfamily, subgenus, subkingdom, suborder, 
+                                                         subphylum, subsection, subspecies, subtribe, 
+                                                         superclass, superfamily, superkingdom, 
+                                                         superorder, tribe, varietas)], 
+                           by = c("FeatureID", "UBERONBodyPartName"), all.y = TRUE, all.x = FALSE)
+
+  print('done with this')
   #dt_databases = unique(dt_redu[Database != '' & !is.na(Database), c('uid_leaf', 'Database', 'NCBIDivision')])
+  print(colnames(dt_tree_ids_redu))
 
+fwrite(dt_tree_ids_redu, 'check_final_final_result.csv')
 
   #fwrite(dt_tree_ids_redu[!is.na(uid_leaf) & uid_leaf != '', c('FeatureID', 'tax_name', 'detected', 'Cosine', 'Matching Peaks', 'UBERONBodyPartName', 'NCBIDivision')], paste0(c('masstResults_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
 
@@ -234,10 +330,31 @@ if(nrow(dt_masst) > 0){
     dt_tree_ids_redu[, `Matching Peaks` := NA]
     dt_tree_ids_redu[, tax_name_class := NA]
     dt_tree_ids_redu[, tax_name_class_spec := NA]
+    dt_tree_ids_redu[, inchi_key_first_block_count := NA]
 }
 
+# Specify the fixed columns
+fixed_cols <- c("FeatureID", "tax_name")
 
-fwrite(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '' & !grepl('mrcaott', FeatureID), c('FeatureID', 'tax_name', 'detected', 'Cosine', 'Matching Peaks', 'UBERONBodyPartName', 'NCBIDivision', 'Database', 'biotype','clade','class','cohort','family','genus','infraclass','infraorder','isolate','kingdom','order','parvorder','phylum','section','species','species group','species subgroup','strain','subclass','subcohort','subfamily','subgenus','subkingdom','suborder','subphylum','subsection','subspecies','subtribe','superclass','superfamily','superkingdom','superorder','tribe','varietas')], paste0(c('treeAnnotation_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
+# Identify the stats columns
+stats_cols <- setdiff(colnames(dt_tree_ids_redu), fixed_cols)
+
+# Order the stats columns alphabetically
+stats_cols_ordered <- stats_cols[order(stats_cols)]
+
+# Reorder the data.table with the specified order
+setcolorder(dt_tree_ids_redu, unique(c(fixed_cols, stats_cols_ordered)))
+
+
+#set columns with substring inchi_key_first_block_count_by_usi_ 0 if they are NA
+print('attemp to set 0')
+inchi_key_cols = grep("inchi_key_first_block_count_by_usi_", colnames(dt_tree_ids_redu), value = TRUE)
+dt_tree_ids_redu[, (inchi_key_cols) := lapply(.SD, function(x) fifelse(is.na(x), 0, x)), .SDcols = inchi_key_cols]
+
+
+
+
+fwrite(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '' & !grepl('mrcaott', FeatureID)], paste0(c('treeAnnotation_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
 
 
 

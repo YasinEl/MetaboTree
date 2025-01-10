@@ -1,15 +1,23 @@
 import argparse
+import os
 import time
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import rdMolHash
 import psycopg2
 from tqdm import tqdm
+from formula_validation.Formula import Formula 
+from rdkit.Chem import rdMolDescriptors
+import re
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Find matching SMILES and export masst_results_table entries")
-    parser.add_argument("smiles", help="SMILES string to search")
+    parser.add_argument("--smiles", default='', help="SMILES string to search")
+    parser.add_argument("--smiles_name", default='', help="SMILES name")
+    parser.add_argument("--smiles_type", default='smiles', help="SMILES type")
+    parser.add_argument("--match_type", default='exact', help="exact or substructure")
+    parser.add_argument("--structure_file", default='', help="SMILES tsv file path")
     parser.add_argument("--matching_peaks", type=int, help="Matching peaks")
     parser.add_argument("--masst_now_path", default = '', help="Intput novel MASST table")
     parser.add_argument("--output", default="results.tsv", help="Output TSV file")
@@ -23,13 +31,26 @@ def check_smiles(smiles):
     return mol
 
 
-def fetch_and_match_smiles(conn, target_smiles, substructure_search=True):
+def fetch_and_match_smiles(conn, target_smiles, match_type='exact', smiles_name = 'only', smiles_type = 'smiles', formula_base = 'any', element_diff = 'any'):
     # Check and convert the target SMILES to a molecule object
-    target_mol = Chem.MolFromSmiles(target_smiles)
+
+    if smiles_type == 'smiles':
+        target_mol = Chem.MolFromSmiles(target_smiles)
+    elif smiles_type == 'smarts':
+        target_mol = Chem.MolFromSmarts(target_smiles)
+
     if target_mol is None:
         raise ValueError(f"Invalid SMILES: {target_smiles}")
     target_inchi_key = Chem.MolToInchiKey(target_mol).split('-')[0]
     
+    if formula_base != 'any':
+        print(f"Formula base: {formula_base}")
+        formula_base = Formula.formula_from_str(formula_base)
+
+    if element_diff != 'any':
+        print(f"Element diff: {element_diff}")
+        element_diff = Formula.formula_from_str(element_diff)
+
     with conn.cursor() as cur:
         print("Fetching SMILES and associated columns from gnps_library...")
         start_time = time.time()
@@ -48,13 +69,14 @@ def fetch_and_match_smiles(conn, target_smiles, substructure_search=True):
         col_names = [desc[0] for desc in cur.description]
         df = pd.DataFrame(rows, columns=col_names)
     
-        if not substructure_search:
+        df['inchi_key_first_block'] = df['inchikey_smiles'].apply(lambda inchi: inchi.split('-')[0] if inchi else None)
+
+        if match_type == 'exact':
             print("Matching SMILES (ignoring stereochemistry)...")
             start_matching_time = time.time()
     
             # Only keep rows with valid SMILES and perform the structure match (exact match based on InChIKey)
-            df['inchi_key_first_block'] = df['inchikey_smiles'].apply(
-                lambda inchi: inchi.split('-')[0] if inchi else None)
+
             df_matched = df[df['inchi_key_first_block'] == target_inchi_key]
     
             print(f"Found {len(df_matched)} matching SMILES in {time.time() - start_matching_time:.2f} seconds.")
@@ -77,9 +99,38 @@ def fetch_and_match_smiles(conn, target_smiles, substructure_search=True):
             matching_smiles = []
             for smiles, mol in tqdm(smiles_to_mol.items(), desc="Substructure Matching", total=len(smiles_to_mol)):
                 if mol.HasSubstructMatch(target_mol):
+                    print('substructure matching successfull')
+
+
+                    # Add formula difference matching
+                    if formula_base != 'any':
+                        formula_candidate = rdMolDescriptors.CalcMolFormula(mol)
+                        formula_candidate = Formula.formula_from_str(formula_candidate)
+
+                        try:
+                            formula_diff_here = formula_candidate - formula_base
+                        except:
+                            continue
+
+                        diff_comparisson = 'wrong'
+                        try:
+                            diff_comparisson = formula_diff_here - element_diff
+                        except:
+                            try:
+                                diff_comparisson = element_diff - formula_diff_here
+                            except:
+                                diff_comparisson = 'wrong'
+
+
+
+                        match_is = str(diff_comparisson) == '' or (set(re.sub(r'\d', '', str(diff_comparisson))) == {"H"})
+
+                        if match_is == False:
+                            continue
+                    print(f"Match found: {smiles}")
                     matching_smiles.append(smiles)
 
-            print(f"Found {len(matching_smiles)} matching SMILES in {time.time() - start_matching_time:.2f} seconds.")
+            print(f"Found {len(matching_smiles)} matching SMILES in {time.time() - start_matching_time:.2f} seconds via substructure matching.")
             # Filter df to include only rows where 'inchikey_smiles' is in matching_smiles
             df_matched = df[df['smiles'].isin(matching_smiles)]
     
@@ -99,18 +150,15 @@ def fetch_and_match_smiles(conn, target_smiles, substructure_search=True):
     
         # Keep only the first 8 rows per group
         df_limited = df_matched[df_matched['row_num'] <= 8]
-        # Drop columns not needed
-        if not substructure_search:
-            df_limited = df_limited.drop(columns=['row_num'])
-        else:
-            df_limited = df_limited.drop(columns=['row_num'])
-            # No need to drop 'mol' or 'substruct_match' as we didn't add them in this version
+
+        df_limited['smiles_name'] = smiles_name
+
     
         print(f"Limited to {len(df_limited)} rows after grouping.")
         print(df_limited['spectrum_id'].unique().tolist())
         
         # Return the unique spectrum_ids
-        return df_limited[["spectrum_id", "inchi_key_first_block"]]#['spectrum_id'].unique().tolist()
+        return df_limited[["spectrum_id", "smiles_name", "inchi_key_first_block"]]
 
 
 
@@ -185,10 +233,9 @@ def fetch_masst_results(conn, lib_table, matching_peaks):
 
 
 
-def save_results_to_tsv(rows, output_file, masst_novel):
+def save_results_to_tsv(df, output_file, masst_novel):
     print(f"Saving results to {output_file}...")
     start_time = time.time()
-    df = pd.DataFrame(rows)
 
     df.rename(columns={'mri': 'USI'}, inplace=True)
     df.rename(columns={'cosine': 'Cosine'}, inplace=True) 
@@ -221,18 +268,79 @@ def main():
 
     try:
 
-        # Step 1: Find matching SMILES (ignoring stereochemistry)
-        matching_lib_ids = fetch_and_match_smiles(conn, args.smiles)
+        # check if the path args.structure_path points to an existing file
+        print(args.structure_file)
+        if os.path.isfile(args.structure_file):
+            #read the tsv file
+            df_smiles = pd.read_csv(args.structure_file, sep='\t')
+        else:
+            #Make dataframe with smiles value from smile sagument
+            df_smiles = pd.DataFrame({'structure': [args.smiles],
+                                      'match': [args.match_type],
+                                      'type': [args.smiles_type],
+                                      'name': [args.smiles_name]})
+            
+        all_results = []
+        formula_base = 'any'
+        element_diff = 'any'
+        #take smiles, type and name in for loop per row
+        for index, row in df_smiles.iterrows():
+            print(index)
+            smiles = row['structure']
+            type = row['type']
+            name = row['name']
+            match = row['match']
+            print(name)
 
-        if not matching_lib_ids["spectrum_id"].unique().tolist():
-            print("No matching SMILES found.")
-            return
 
-        # Step 3: Fetch masst_results_table entries for the matching lib_ids
-        masst_results = fetch_masst_results(conn, matching_lib_ids, args.matching_peaks)
+            try:
+
+                #Check if key "formula_base" is in the row
+                if 'formula_base' in row.keys():
+                    formula_base = row['formula_base']
+                else:
+                    formula_base = 'any'
+
+                if 'element_diff' in row.keys():
+                    element_diff = row['element_diff']
+                else:
+                    element_diff = 'any'
+            
+            except ValueError as e:
+                print(f"Problem with formula_base {str(formula_base)} or element_diff {str(element_diff)}")
+                print(e)
+
+
+            try:
+                # Step 1: Find matching SMILES (ignoring stereochemistry)
+                matching_lib_ids = fetch_and_match_smiles(conn, smiles_name=name, target_smiles=smiles, match_type=match, smiles_type=type, formula_base=formula_base, element_diff=element_diff)
+
+                if len(matching_lib_ids) == 0:
+                    print("No matching SMILES found.")
+                    continue  
+                
+                print(f"Found {len(matching_lib_ids)} matching SMILES.")
+                # Step 2: Fetch masst_results_table entries for the matching lib_ids
+                masst_results = fetch_masst_results(conn, matching_lib_ids, args.matching_peaks)
+
+                print(f"Found {len(masst_results)} matching masst_results_table entries.")
+
+                all_results.append(pd.DataFrame(masst_results))
+            except ValueError as e:
+                print(e)
+
+        masst_results_final = pd.concat(all_results, ignore_index=True)
+
+        #print columns
+        print(masst_results_final.columns)
+
+        # If we have multiple matches to the same spectrum keep the moelcule with the best match
+        masst_results_final = masst_results_final.sort_values(by=['cosine', 'matching_peaks'], ascending=[False, False])
+        masst_results_final = masst_results_final.drop_duplicates(subset=['mri_id', 'scan_id'])
+
 
         # Step 4: Save results to TSV
-        save_results_to_tsv(masst_results, args.output, args.masst_now_path)
+        save_results_to_tsv(masst_results_final, args.output, args.masst_now_path)
 
     finally:
         conn.close()

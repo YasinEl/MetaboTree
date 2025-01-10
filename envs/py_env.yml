@@ -7,6 +7,7 @@ dependencies:
   - python=3
   - pandas
   - biopython
+  - tqdm
   - ete3
   - requests
   - pip
@@ -16,3 +17,4 @@ dependencies:
       - Pillow
       - networkx
       - psycopg2
+      - formula_validation
