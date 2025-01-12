@@ -5,8 +5,8 @@ channels:
   - defaults
 dependencies:
   - python=3.11
+  - numpy<2
+  - cython
   - pip
   - pip:
-      - cython
-      - numpy<2
       - empress

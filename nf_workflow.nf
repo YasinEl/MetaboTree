@@ -130,7 +130,7 @@ process RunSQLquery {
 
     script:
     """
-    python $TOOL_FOLDER/masst_records_lookup.py --smiles "$params.smiles" --structure_file $DATA_FOLDER/$params.structure_file  --matching_peaks $params.matching_peaks --match_type $params.match_type --smiles_type $params.smiles_type --smiles_name $params.smiles_name  --output masst_records_hits.csv --masst_now_path "$masst_results"
+    python $TOOL_FOLDER/masst_records_lookup.py --smiles "$params.smiles" --structure_file "$baseDir/$params.structure_file"  --matching_peaks $params.matching_peaks --match_type $params.match_type --smiles_type $params.smiles_type --smiles_name $params.smiles_name  --output masst_records_hits.csv --masst_now_path "$masst_results"
     """
 }
 
@@ -321,7 +321,7 @@ process generateEmpressPlot {
 
     // conda "$baseDir/envs/qiime2-amplicon-2024.2-py38-linux-conda.yml"
 
-    conda "$baseDir/envs/pyEmpress_env.yml"
+    conda "$baseDir/envs/pyEmpress_env.yml" 
 
     publishDir "./nf_output", mode: 'copy'
 

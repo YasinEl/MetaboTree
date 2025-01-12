@@ -255,9 +255,11 @@ def save_results_to_tsv(df, output_file, masst_novel):
 def main():
     args = parse_arguments()
 
+    print('Running masst_records_lookup.py with arguments:')
+    print(args)
+
 
     # Database connection
-   # os.environ['PGPASSWORD'] = '9421'
     conn = psycopg2.connect(
         dbname="masst_records",
         user="yasel",
@@ -269,10 +271,11 @@ def main():
     try:
 
         # check if the path args.structure_path points to an existing file
-        print(args.structure_file)
+        print(f"Path to structure file is: {args.structure_file}")
         if os.path.isfile(args.structure_file):
             #read the tsv file
             df_smiles = pd.read_csv(args.structure_file, sep='\t')
+            print(f"Read {len(df_smiles)} rows from {args.structure_file}.")
         else:
             #Make dataframe with smiles value from smile sagument
             df_smiles = pd.DataFrame({'structure': [args.smiles],
