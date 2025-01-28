@@ -1,11 +1,11 @@
 import pandas as pd
 import argparse
-from Bio import Entrez
 
 def load_data(redu_path, sparql_path):
+
+    print(sparql_path)
     df_redu = pd.read_csv(redu_path, sep='\t', low_memory=False)
     dt_sparql = pd.read_csv(sparql_path)
-    #df_ncbi = pd.read_csv(ncbi_path)
 
     # Convert NCBI column to integer and strip any whitespace
     df_redu['NCBI'] = df_redu['NCBI'].astype(str).str.strip().astype(int)
@@ -13,20 +13,6 @@ def load_data(redu_path, sparql_path):
     # Collect existing NCBI IDs from df_redu
     existing_ncbi_ids = set(df_redu['NCBI'])
     print(f"Existing NCBI IDs in df_redu (sample): {list(existing_ncbi_ids)[:10]}")
-
-    # Prepare df_ncbi and dt_sparql by ensuring NCBI ID columns are integer
-    # if not df_ncbi.empty:
-    #     df_ncbi['NCBI'] = df_ncbi['NCBI'].astype(str).str.strip()
-    #     df_ncbi['NCBI'] = df_ncbi['NCBI'].astype(int)
-    #     df_ncbi = df_ncbi.drop_duplicates()
-    #     df_ncbi['Database'] = 'NCBI_biosystems'
-
-    #     # Print debug info
-    #     print(f"df_ncbi NCBI unique count: {df_ncbi['NCBI'].nunique()}")
-    #     print(f"df_ncbi NCBI unique values (sample): {df_ncbi['NCBI'].unique()[:10]}")
-    # else:
-    #     print("df_ncbi is empty")
-    #     df_ncbi = pd.DataFrame({'NCBI': [], 'Database': []})
 
     if not dt_sparql.empty:
         dt_sparql['NCBI'] = dt_sparql['ncbiTaxonomyID'].astype(str).str.strip().astype(int)
@@ -41,8 +27,7 @@ def load_data(redu_path, sparql_path):
         print("dt_sparql is empty")
         dt_sparql = pd.DataFrame({'NCBI': [], 'Database': []})
 
-    # Concatenate dataframes
-    # df_databases = pd.concat([dt_sparql, df_ncbi])
+    # Concatenate dataframes in case we dont just have wikidata
     df_databases = dt_sparql
 
     # Merge df_redu with df_databases to get the Database column
@@ -52,12 +37,8 @@ def load_data(redu_path, sparql_path):
     # If there are duplicates in df_merged for the same NCBI, combine Database values
     df_merged['Database'] = df_merged.groupby('NCBI')['Database'].transform(lambda x: ','.join(x.dropna().unique()))
 
-    print(df_merged.columns)
-
     # Drop duplicates and reset index
     df_merged = df_merged.drop_duplicates().reset_index(drop=True)
-
-    print(df_merged.columns)
 
     # Find NCBIs present in df_databases but not in df_redu
     missing_ncbi = df_databases[~df_databases['NCBI'].isin(df_redu['NCBI'])]
@@ -80,7 +61,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Extend df_redu with additional NCBI IDs from CSV files.")
     parser.add_argument('redu_path', help='Path to the REDU CSV file')
     parser.add_argument('sparql_path', help='Path to the SPARQL CSV file')
-    # parser.add_argument('ncbi_path', help='Path to the NCBI CSV file')
     
     args = parser.parse_args()
     df = main(args)

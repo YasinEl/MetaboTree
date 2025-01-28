@@ -16,120 +16,6 @@ library(grid)
 library(readr)
 library(viridis)
 
-
-classify_taxa <- function(taxa_vector) {
-  # Check each category with their respective patterns
-  if (any(grepl("Plantae", taxa_vector, ignore.case = TRUE))) {
-    return("Plant")
-  } else if (any(grepl("Fungi", taxa_vector, ignore.case = TRUE))) {
-    return("Fungi")
-  } else if (any(grepl("Animalia|Metazoa", taxa_vector, ignore.case = TRUE))) {
-    return("Animal")
-  } else if (any(grepl("Bacteria", taxa_vector, ignore.case = TRUE))) {
-    return("Bacteria")
-  } else if (any(grepl("Archaea", taxa_vector, ignore.case = TRUE))) {
-    return("Archaea")  # Added condition for Archaea
-  } else {
-    return("Other")
-  }
-}
-classify_taxa_detailed <- function(taxa_vector) {
-  # Plant categories
-  if (any(grepl("Plantae", taxa_vector, ignore.case = TRUE))) {
-    if (any(grepl("Lamiales", taxa_vector, ignore.case = TRUE))) {
-      return("Lamiales")
-    } else if (any(grepl("Asterales", taxa_vector, ignore.case = TRUE))) {
-      return("Asterales")
-    } else if (any(grepl("Fabales", taxa_vector, ignore.case = TRUE))) {
-      return("Fabales")
-    } else if (any(grepl("Malpighiales", taxa_vector, ignore.case = TRUE))) {
-      return("Malpighiales")
-    } else if (any(grepl("Rosales", taxa_vector, ignore.case = TRUE))) {
-      return("Rosales")
-    } else if (any(grepl("Gentianales", taxa_vector, ignore.case = TRUE))) {
-      return("Gentianales")
-    } else if (any(grepl("Sapindales", taxa_vector, ignore.case = TRUE))) {
-      return("Sapindales")
-    } else if (any(grepl("Poales", taxa_vector, ignore.case = TRUE))) {
-      return("Poales")
-    } else if (any(grepl("Caryophyllales", taxa_vector, ignore.case = TRUE))) {
-      return("Caryophyllales")
-    } else if (any(grepl("Solanales", taxa_vector, ignore.case = TRUE))) {
-      return("Solanales")
-    } else {
-      return("Other")
-    }
-    # Fungi categories
-  } else if (any(grepl("Fungi", taxa_vector, ignore.case = TRUE))) {
-    return("Fungi")
-    # Animal categories
-  } else if (any(grepl("Animalia|Metazoa", taxa_vector, ignore.case = TRUE))) {
-    if (any(grepl("Mammalia", taxa_vector, ignore.case = TRUE))) {
-      return("Mammal")
-    } else if (any(grepl("Aves", taxa_vector, ignore.case = TRUE))) {
-      return("Bird")
-    } else if (any(grepl("Tunicata", taxa_vector, ignore.case = TRUE))) {
-      return("Invertebrate")
-    } else if (any(grepl("Reptilia", taxa_vector, ignore.case = TRUE))) {
-      return("Reptile")
-    } else if (any(grepl("Amphibia|Anura|Caudata|Gymnophiona", taxa_vector, ignore.case = TRUE))) {
-      return("Amphibian")
-    } else if (any(grepl("Pisces|Fish|Chondrichthyes|Osteichthyes|Actinopterygii|Sarcopterygii", taxa_vector, ignore.case = TRUE))) {
-      return("Fish")
-    } else if (any(grepl("Echinodermata|Echinacea|Echinidea|Echinoidea|Euechinoidea", taxa_vector, ignore.case = TRUE))) {
-      return("Echinoderm")
-    } else if (any(grepl("Nematoda|Anisakidae|Ascaridoidea|Ascaridomorpha", taxa_vector, ignore.case = TRUE))) {
-      return("Nematode")
-    } else if (any(grepl("Cnidaria|Alcyonium|Plexaura", taxa_vector, ignore.case = TRUE))) {
-      return("Cnidarian")
-    } else if (any(grepl("Annelida|Parechinidae|Polychaeta|Terebellida|Terebellidae|Terebelliformia", taxa_vector, ignore.case = TRUE))) {
-      return("Annelid")
-    } else if (any(grepl("Insecta", taxa_vector, ignore.case = TRUE))) {
-      return("Insect")
-    } else if (any(grepl("Crustacea", taxa_vector, ignore.case = TRUE))) {
-      return("Crustacean")
-    } else if (any(grepl("Mollusca", taxa_vector, ignore.case = TRUE))) {
-      return("Mollusk")
-    } else if (any(grepl("Arachnida", taxa_vector, ignore.case = TRUE))) {
-      return("Arachnid")
-    } else if (any(grepl("Chondrichthyes", taxa_vector, ignore.case = TRUE))) {
-      return("Cartilaginous Fish")
-    } else if (any(grepl("Actinopterygii", taxa_vector, ignore.case = TRUE))) {
-      return("Ray-finned Fish")
-    } else if (any(grepl("Serpentes", taxa_vector, ignore.case = TRUE))) {
-      return("Snake")
-    } else if (any(grepl("Porifera", taxa_vector, ignore.case = TRUE))) {
-      return("Sponge")
-    } else if (any(grepl("Cephalopoda", taxa_vector, ignore.case = TRUE))) {
-      return("Cephalopod")
-    } else if (any(grepl("Gastropoda", taxa_vector, ignore.case = TRUE))) {
-      return("Gastropod")
-    } else {
-      return("Other")
-    }
-    # Bacteria categories
-  } else if (any(grepl("Bacteria", taxa_vector, ignore.case = TRUE))) {
-    if (any(grepl("Proteobacteria", taxa_vector, ignore.case = TRUE))) {
-      return("Proteobacteria")
-    } else if (any(grepl("Firmicutes", taxa_vector, ignore.case = TRUE))) {
-      return("Firmicutes")
-    } else if (any(grepl("Actinobacteria", taxa_vector, ignore.case = TRUE))) {
-      return("Actinobacteria")
-    } else if (any(grepl("Cyanobacteria", taxa_vector, ignore.case = TRUE))) {
-      return("Cyanobacteria")
-    } else {
-      return("Other")
-    }
-    # Archaea categories
-  } else if (any(grepl("Archaea", taxa_vector, ignore.case = TRUE))) {
-    return("Archaea")
-  } else {
-    return("Other")
-  }
-}
-
-
-
 USI2MASST_matchCol <- function(x) {
   elements <- strsplit(x, ":")[[1]]
   mzspec <- elements[1]
@@ -157,16 +43,27 @@ cid = args$cid
 
 # Load ReDU table
 dt_redu <- fread(args$input_redu)
-#dt_redu[, n_samples := sum(!is.na(match_col)), by =.(uid_leaf)]
 
 
+print(colnames(dt_redu))
 
-dt_redu_match = dt_redu[!is.na(uid_leaf), .(NCBIDivision = NCBIDivision[1],UBERONBodyPartName = paste0(sort(unique(UBERONBodyPartName)), collapse= ', '), tax_name = tax_name[1], Database = unique(Database)[1]), by =.(uid_leaf)]
+print(dt_redu)
 
+# get all columnnames sparql_* 
+sparql_columns = colnames(dt_redu)[grep('^sparql_', colnames(dt_redu))]
+
+dt_redu_match = dt_redu[!is.na(uid_leaf), c(.(NCBIDivision = NCBIDivision[1], UBERONBodyPartName = paste0(sort(unique(UBERONBodyPartName)), collapse= ', '), tax_name = tax_name[1]), 
+  lapply(.SD, function(col) col[1])
+), by =.(uid_leaf), .SDcols = sparql_columns]
+
+
+print(colnames(dt_redu_match))
+
+print(dt_redu_match)
 
 # Load ReDU table
 dt_linage <- fread(args$input_linage)
-dt_linage = unique(dt_linage[, !c('NCBI', 'uid')], by ='uid_leaf')
+dt_linage = unique(dt_linage[, !c('uid')], by ='uid_leaf')
 dt_redu_match = merge(dt_redu_match, dt_linage, by = 'uid_leaf', all.x = TRUE)
 
 # Load tree
@@ -174,9 +71,6 @@ tree <- read.newick(args$input_tree)
 
 # Get Tree ID base table
 dt_tree_ids = data.table(uid_leaf = c(tree$tip.label, tree$node.label))
-
-print(head(dt_redu_match))
-print(colnames(dt_redu_match))
 
 dt_tree_ids_redu <- merge(dt_tree_ids, dt_redu_match, by = "uid_leaf", all.x = TRUE)
 
@@ -186,62 +80,36 @@ dt_masst <- fread(args$input_masst)
 
 if(nrow(dt_masst) > 0){
 
-  print(nrow(dt_masst))
   dt_masst = dt_masst[smiles_name != '']
-  print(nrow(dt_masst))
+  
 
 
-  dt_masst[, match_col := USI2MASST_matchCol(unique(USI)), by =.(USI)]
+  dt_masst[, match_col := USI2MASST_matchCol(USI[1]), by =.(USI)]
+
+  keep_cols = c('Cosine', 'Matching Peaks', 'match_col', 'smiles_name', 'scan_id')
 
 
-  dt_masst[, max_cosine := max(Cosine), by = .(match_col, smiles_name)]
 
-  keep_cols = c('Cosine', 'Matching Peaks', 'match_col', 'smiles_name')
-
-  if('inchi_key_first_block' %in% colnames(dt_masst)){
-    dt_masst[, inchi_key_first_block_count_by_usi := paste0(unique(inchi_key_first_block), collapse=','), by = .(match_col, smiles_name)]
-    keep_cols = c(keep_cols, 'inchi_key_first_block_count_by_usi')
-  }
-
-  max_indices <- dt_masst[, .I[which.max(Cosine)], by = .(match_col, smiles_name)]$V1
+  max_indices <- dt_masst[, .I[which.max(Cosine)], by = .(match_col, smiles_name, scan_id)]$V1
   dt_masst <- dt_masst[max_indices]
 
 
-  print('cosine col filter')
-
-  dt_masst <- unique(dt_masst[, ..keep_cols])
-
   print('stats iteration 1')
 
-  dt_masst <- dt_masst[, .(Cosine = max(Cosine), `Matching Peaks` = max(`Matching Peaks`[which.max(Cosine)]), inchi_key_first_block_count_by_usi = inchi_key_first_block_count_by_usi[1]), by = .(match_col, smiles_name)]
-
+  dt_masst <- dt_masst[, .(Cosine = max(Cosine), `Matching Peaks` = max(`Matching Peaks`[which.max(Cosine)]), inchi_key_first_block_count_by_usi = paste0(unique(inchi_key_first_block), collapse=',')), by = .(match_col, smiles_name)]
+  
 
   dt_masst <- dcast(dt_masst, match_col ~ smiles_name, 
                    value.var = c("Cosine", "Matching Peaks", "inchi_key_first_block_count_by_usi"))
   
-  print('dt_tree_ids_redu')
-  print(head(dt_tree_ids_redu))
-  print(colnames(dt_tree_ids_redu))
-
-  print('dt_masst')
-  print(head(dt_masst))
-  print(colnames(dt_masst))
-
   dt_redu_match = unique(dt_redu[, c('match_col', 'uid_leaf')])
-
-
-  fwrite(dt_masst, 'check_masst.csv')
 
   dt_redu_match <- merge(dt_masst, dt_redu_match, by = "match_col", all = TRUE)
 
   dt_redu_match = unique(dt_redu_match)
 
-  fwrite(dt_redu_match, 'dt_redu_match.csv')
 
   dt_tree_ids_redu <- merge(dt_tree_ids_redu, dt_redu_match, by = "uid_leaf", all.x = TRUE, all.y = FALSE)
-
-  #dt_tree_ids_redu[, detected := FALSE]
-  #dt_tree_ids_redu[, detected := any(!is.na(.SD)), .SDcols = patterns("Cosine")]
   dt_tree_ids_redu[, FeatureID := uid_leaf]
 
 
@@ -263,7 +131,6 @@ for (suffix in suffixes) {
 
 dt_process = copy(dt_tree_ids_redu)
 
-
     # Select relevant columns and rename to standard temporary names
     dt_temp <- dt_process[, .(
         FeatureID,
@@ -274,8 +141,6 @@ dt_process = copy(dt_tree_ids_redu)
     )]
 
 dt_temp = dt_temp[Cosine_temp > 0]
-
-    fwrite(dt_temp, 'check_dt_temp.csv')
     
     # Perform calculations on the renamed columns
     dt_temp <- dt_temp[, .(
@@ -283,15 +148,17 @@ dt_temp = dt_temp[Cosine_temp > 0]
         Matching_Peaks = Matching_Peaks_temp[which.max(ifelse(is.na(Matching_Peaks_temp), -Inf, Matching_Peaks_temp))],
         inchi_key_first_block_count = {
             unique_values <- unique(inchi_key_first_block_count_temp[!is.na(inchi_key_first_block_count_temp)])
-            if (length(unique_values) == 0) 0L else length(unique(unlist(strsplit(as.character(unique_values), ","))))
+            if (length(unique_values) == 0) 0L else log10(length(unique(unlist(strsplit(as.character(unique_values), ",")))) + 0.1)
+        },
+        inchi_key_first_block_list = {
+            unique_values <- unique(inchi_key_first_block_count_temp[!is.na(inchi_key_first_block_count_temp)])
+            paste0(unique(unlist(strsplit(as.character(unique_values), ","))), collapse = ", ")
         }
     ), by = .(FeatureID, UBERONBodyPartName)]
     
-fwrite(dt_temp, 'check_dt_temp2.csv')
-
     # Rename columns back to specific names with suffix
-    setnames(dt_temp, c("Cosine", "Matching_Peaks", "inchi_key_first_block_count"),
-                     c(paste0("Cosine_", suffix), paste0("Matching_Peaks_", suffix), paste0("inchi_key_first_block_count_by_usi_", suffix)))
+    setnames(dt_temp, c("Cosine", "Matching_Peaks", "inchi_key_first_block_count", "inchi_key_first_block_list"),
+                     c(paste0("Cosine_", suffix), paste0("Matching_Peaks_", suffix), paste0("inchi_key_first_block_count_by_usi_", suffix), paste0("inchi_key_first_block_list_", suffix)))
     
     # Store result in the list
     results_list[[suffix]] <- dt_temp
@@ -300,26 +167,31 @@ fwrite(dt_temp, 'check_dt_temp2.csv')
 # Step 4: Merge all results tables by FeatureID and UBERONBodyPartName
 final_result <- Reduce(function(dt1, dt2) merge(dt1, dt2, by = c("FeatureID", "UBERONBodyPartName"), all = TRUE), results_list)
 
-fwrite(final_result, 'check_final_result.csv')
+
+cols = c('FeatureID', 'UBERONBodyPartName',
+         'tax_name', 'NCBIDivision', 'biotype', 
+         'clade', 'class', 'cohort', 'family', 'genus', 'infraclass', 
+         'infraorder', 'isolate', 'kingdom', 'order', 'parvorder', 
+         'phylum', 'section', 'species', 'species group', 
+         'species subgroup', 'strain', 'subclass', 'subcohort', 
+         'subfamily', 'subgenus', 'subkingdom', 'suborder', 
+         'subphylum', 'subsection', 'subspecies', 'subtribe', 
+         'superclass', 'superfamily', 'superkingdom', 
+         'superorder', 'tribe', 'varietas', 'NCBI')
+
+
+# Add all columns starting with "sparql_"
+sparql_cols <- grep("^sparql_", colnames(dt_tree_ids_redu), value = TRUE)
+cols <- c(cols, sparql_cols)
+
 
 # Step 5: Add back any other columns needed after merging
-dt_tree_ids_redu <- merge(final_result, dt_tree_ids_redu[, .(FeatureID, UBERONBodyPartName, 
-                                                         tax_name, NCBIDivision, Database, biotype, 
-                                                         clade, class, cohort, family, genus, infraclass, 
-                                                         infraorder, isolate, kingdom, order, parvorder, 
-                                                         phylum, section, species, `species group`, 
-                                                         `species subgroup`, strain, subclass, subcohort, 
-                                                         subfamily, subgenus, subkingdom, suborder, 
-                                                         subphylum, subsection, subspecies, subtribe, 
-                                                         superclass, superfamily, superkingdom, 
-                                                         superorder, tribe, varietas)], 
+dt_tree_ids_redu <- merge(final_result, dt_tree_ids_redu[, ..cols], 
                            by = c("FeatureID", "UBERONBodyPartName"), all.y = TRUE, all.x = FALSE)
 
   print('done with this')
   #dt_databases = unique(dt_redu[Database != '' & !is.na(Database), c('uid_leaf', 'Database', 'NCBIDivision')])
   print(colnames(dt_tree_ids_redu))
-
-fwrite(dt_tree_ids_redu, 'check_final_final_result.csv')
 
   #fwrite(dt_tree_ids_redu[!is.na(uid_leaf) & uid_leaf != '', c('FeatureID', 'tax_name', 'detected', 'Cosine', 'Matching Peaks', 'UBERONBodyPartName', 'NCBIDivision')], paste0(c('masstResults_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
 
@@ -331,6 +203,7 @@ fwrite(dt_tree_ids_redu, 'check_final_final_result.csv')
     dt_tree_ids_redu[, tax_name_class := NA]
     dt_tree_ids_redu[, tax_name_class_spec := NA]
     dt_tree_ids_redu[, inchi_key_first_block_count := NA]
+    dt_tree_ids_redu[, inchi_key_first_block_list := NA]
 }
 
 # Specify the fixed columns
@@ -354,7 +227,7 @@ dt_tree_ids_redu[, (inchi_key_cols) := lapply(.SD, function(x) fifelse(is.na(x),
 
 
 
-fwrite(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '' & !grepl('mrcaott', FeatureID)], paste0(c('treeAnnotation_',  lib_id, '_', cid, '.tsv'), collapse = ''), sep = '\t')
+fwrite(unique(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '' & !grepl('mrcaott', FeatureID)]), 'metadata_table_final.tsv', sep = '\t')
 
 
 

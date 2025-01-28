@@ -24,7 +24,7 @@ def main(input_file):
     df = df[df['NCBI'].notna() & df['NCBI'].str.strip().astype(bool)]
     df['NCBI'] = df['NCBI'].astype(int)
 
-    print(df)
+    #print(df)
 
     df.to_csv('NCBI_to_ToL_file.csv', index = False)
 

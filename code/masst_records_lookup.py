@@ -19,6 +19,7 @@ def parse_arguments():
     parser.add_argument("--match_type", default='exact', help="exact or substructure")
     parser.add_argument("--structure_file", default='', help="SMILES tsv file path")
     parser.add_argument("--matching_peaks", type=int, help="Matching peaks")
+    parser.add_argument("--cosine", type=float, help="cosine")
     parser.add_argument("--masst_now_path", default = '', help="Intput novel MASST table")
     parser.add_argument("--output", default="results.tsv", help="Output TSV file")
     return parser.parse_args()
@@ -153,7 +154,8 @@ def fetch_and_match_smiles(conn, target_smiles, match_type='exact', smiles_name 
 
         df_limited['smiles_name'] = smiles_name
 
-    
+        df_limited.to_csv( smiles_name + '.csv', index=False)
+
         print(f"Limited to {len(df_limited)} rows after grouping.")
         print(df_limited['spectrum_id'].unique().tolist())
         
@@ -163,7 +165,7 @@ def fetch_and_match_smiles(conn, target_smiles, match_type='exact', smiles_name 
 
 
 
-def fetch_masst_results(conn, lib_table, matching_peaks):
+def fetch_masst_results(conn, lib_table, matching_peaks, cosine):
     with conn.cursor() as cur:
         print("Fetching masst_results_table entries for matching spectrum_ids...")
         start_time = time.time()
@@ -221,6 +223,8 @@ def fetch_masst_results(conn, lib_table, matching_peaks):
         # Filter rows where 'matching_peaks' is greater than or equal to the threshold
         filtered_df = df[df['matching_peaks'] >= matching_peaks]
 
+        #filter cosine
+        filtered_df = filtered_df[filtered_df['cosine'] >= cosine]
 
         filtered_df = pd.merge(filtered_df, lib_table, on='spectrum_id', how='inner')
 
@@ -242,10 +246,10 @@ def save_results_to_tsv(df, output_file, masst_novel):
     df.rename(columns={'matching_peaks': 'Matching Peaks'}, inplace=True)
 
     # Add the novel MASST table
-    if masst_novel != '':
-        df_novel = pd.read_csv(masst_novel)
-        if len(df_novel) > 0:
-            df = pd.concat([df, df_novel], ignore_index=True)
+    # if masst_novel != '':
+    #     df_novel = pd.read_csv(masst_novel)
+    #     if len(df_novel) > 0:
+    #         df = pd.concat([df, df_novel], ignore_index=True)
 
 
     df.to_csv(output_file, index=False)
@@ -298,13 +302,13 @@ def main():
 
             try:
 
-                #Check if key "formula_base" is in the row
-                if 'formula_base' in row.keys():
+                #Check if key "formula_base" is in the row and its not empty or NA
+                if 'formula_base' in row.keys() and row['formula_base'] != '' and row['formula_base'] != 'NA' and not pd.isna(row['formula_base']):
                     formula_base = row['formula_base']
                 else:
                     formula_base = 'any'
 
-                if 'element_diff' in row.keys():
+                if 'element_diff' in row.keys() and row['element_diff'] != '' and row['element_diff'] != 'NA' and not pd.isna(row['element_diff']):
                     element_diff = row['element_diff']
                 else:
                     element_diff = 'any'
@@ -313,6 +317,8 @@ def main():
                 print(f"Problem with formula_base {str(formula_base)} or element_diff {str(element_diff)}")
                 print(e)
 
+            print(f"formula_base: {formula_base}")
+            print(f"element_diff: {element_diff}")
 
             try:
                 # Step 1: Find matching SMILES (ignoring stereochemistry)
@@ -324,7 +330,7 @@ def main():
                 
                 print(f"Found {len(matching_lib_ids)} matching SMILES.")
                 # Step 2: Fetch masst_results_table entries for the matching lib_ids
-                masst_results = fetch_masst_results(conn, matching_lib_ids, args.matching_peaks)
+                masst_results = fetch_masst_results(conn, matching_lib_ids, args.matching_peaks, args.cosine)
 
                 print(f"Found {len(masst_results)} matching masst_results_table entries.")
 
@@ -339,7 +345,7 @@ def main():
 
         # If we have multiple matches to the same spectrum keep the moelcule with the best match
         masst_results_final = masst_results_final.sort_values(by=['cosine', 'matching_peaks'], ascending=[False, False])
-        masst_results_final = masst_results_final.drop_duplicates(subset=['mri_id', 'scan_id'])
+        masst_results_final = masst_results_final.drop_duplicates(subset=['mri_id', 'scan_id', 'smiles_name'])
 
 
         # Step 4: Save results to TSV

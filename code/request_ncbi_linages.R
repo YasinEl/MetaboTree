@@ -47,7 +47,8 @@ data_redu_linages <- fread(redu_ncbi)
 
 # Read data from file
 data <- fread(input_file)
-data[, ncbiid := str_extract(NCBITaxonomy, "^[^|]*")]
+#data[, ncbiid := str_extract(NCBITaxonomy, "^[^|]*")]
+data[, ncbiid := as.numeric(NCBI)]
 
 # Filter and prepare NCBI IDs
 ncbiid <- na.omit(unique(data[!(ncbiid %in% unique(data_redu_linages$NCBI))]$ncbiid))
@@ -56,8 +57,6 @@ ncbiid <- as.numeric(ncbiid)
 ncbiid <- ncbiid[!is.na(ncbiid)]
 
 if (length(ncbiid) > 0){
-
-
 
 
 print(paste("Number of NCBI IDs to fetch:", length(ncbiid)))

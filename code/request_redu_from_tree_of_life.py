@@ -21,7 +21,6 @@ def main(file_path, linage_path, ncbi_to_ToL_file_path):
     df_ncbi_to_ToL['NCBI'] = df_ncbi_to_ToL['NCBI'].astype(int)
     df_ncbi_to_ToL['uid'] = df_ncbi_to_ToL['uid'].astype(int)
 
-
     df = df.merge(df_ncbi_to_ToL, on='NCBI',  how='left')   
     df_linage = df_linage.merge(df_ncbi_to_ToL, on='NCBI', how='left', suffixes=('', '_dup'))
 

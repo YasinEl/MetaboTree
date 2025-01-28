@@ -109,3 +109,9 @@ fi
 echo "Compressed files have been removed."
 
 echo "Files downloaded and uncompressed successfully."
+
+echo "Preprocessing taxonomy.tsv"
+
+python ../code/prepare_ncbi_to_ToL_file.py taxonomy.tsv
+
+echo "Done."
