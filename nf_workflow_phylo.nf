@@ -44,6 +44,8 @@ params.analog_mass_below = 130
 params.analog_mass_above = 200
 params.analog_exact = 0
 
+params.SQLite_path = "/home/yasin/projects/masst_records/workflows/masst_records_make_database/database/masst_records.sqlite"
+
 
 process Update_ReDU_and_limit_to_masst {
     conda "$baseDir/envs/py_env.yml"
@@ -116,7 +118,7 @@ process RunSQLquery {
 
     conda "$baseDir/envs/py_env.yml"
 
-    //cache false
+    cache false
 
     publishDir "./nf_output", mode: 'copy'
     
@@ -130,7 +132,7 @@ process RunSQLquery {
 
     script:
     """
-    python $TOOL_FOLDER/masst_records_lookup.py --smiles "$params.smiles" --structure_file "$baseDir/$params.structure_file"  --matching_peaks $params.matching_peaks --cosine $params.min_cos --match_type $params.match_type --smiles_type $params.smiles_type --smiles_name $params.smiles_name  --output masst_records_hits.csv --masst_now_path "$masst_results"
+    python $TOOL_FOLDER/masst_records_lookup_SQLite.py --SQLite_path "$params.SQLite_path" --smiles "$params.smiles" --structure_file "$baseDir/$params.structure_file"  --matching_peaks $params.matching_peaks --cosine $params.min_cos --match_type $params.match_type --smiles_type $params.smiles_type --smiles_name $params.smiles_name  --output masst_records_hits.csv --masst_now_path "$masst_results"
     """
 }
 
@@ -261,25 +263,6 @@ process CreateTOLTree {
     python $TOOL_FOLDER/create_tree_of_life.py --input_csv $input_csv --tree_path $DATA_FOLDER/labelled_supertree.tre --usi $params.usi --cid $params.pubchemid 
     """
 }
-
-// process Add_Wikidata {
-
-//     conda "$baseDir/envs/py_env.yml"
-
-//     input:
-//     path redu
-//     path sparql
-//     // each ncbi
-
-//     output:
-//     path "all_organism_table.csv"
-
-//     script:
-//     """
-//     python $TOOL_FOLDER/extend_organsims_from_databases.py $redu $sparql 
-//     """
-// }
-
 
 
 process generateEmpressPlot {

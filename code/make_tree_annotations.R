@@ -220,14 +220,33 @@ setcolorder(dt_tree_ids_redu, unique(c(fixed_cols, stats_cols_ordered)))
 
 
 #set columns with substring inchi_key_first_block_count_by_usi_ 0 if they are NA
-print('attemp to set 0')
+print('attemp to set 0 inchi_key_first_block_count_by_usi_')
 inchi_key_cols = grep("inchi_key_first_block_count_by_usi_", colnames(dt_tree_ids_redu), value = TRUE)
 dt_tree_ids_redu[, (inchi_key_cols) := lapply(.SD, function(x) fifelse(is.na(x), 0, x)), .SDcols = inchi_key_cols]
 
+print('attemp to set 0 sparql')
+# sparql_cols = grep("sparql_", colnames(dt_tree_ids_redu), value = TRUE)
+# dt_tree_ids_redu[, (sparql_cols) := lapply(.SD, function(x) fifelse(x==0, NA, x)), .SDcols = sparql_cols]
+sparql_cols <- grep("sparql_", names(dt_tree_ids_redu), value = TRUE)
+for (col in sparql_cols) {
+  print(col)
+  dt_tree_ids_redu[get(col) == 0, (col) := NA]
+  print(paste(col, ' done'))
+}
 
 
 
-fwrite(unique(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '' & !grepl('mrcaott', FeatureID)]), 'metadata_table_final.tsv', sep = '\t')
+print('done')
+
+dt_filtered = copy(dt_tree_ids_redu[!is.na(FeatureID) & FeatureID != '' & !grepl('mrcaott', FeatureID)])
+
+print('filtered')
+
+dt_output = unique(dt_filtered, by = 'FeatureID')
+
+print('copied')
+
+fwrite(dt_output, 'metadata_table_final.tsv', sep = '\t')
 
 
 
