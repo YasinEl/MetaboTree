@@ -247,7 +247,7 @@ def fetch_masst_results(conn, lib_table, matching_peaks, cosine):
 
 def fetch_features(conn, masst_matches):
     cur = conn.cursor()
-    print("Fetching features")
+    print("Fetching features", flush=True)
     start_time = time.time()
 
     # Convert masst_matches to DataFrame
@@ -265,8 +265,8 @@ def fetch_features(conn, masst_matches):
         # Build the query with placeholders for the current chunk only
         placeholders = ','.join(['(?, ?)'] * len(chunk))
         query = f"""
-        SELECT mri_id_int, scan_number, feature_id, feature_mz, feature_rt, feature_intensity, feature_area, 
-               feature_intensity_log10, feature_intensity_CLR, feature_area_log10, feature_area_CLR
+        SELECT mri_id_int, scan_number, feature_id, feature_mz, feature_rt, feature_intensity,  
+               feature_intensity_CLR, feature_intensity_TICnorm, feature_area_TIC
         FROM feature_table
         WHERE (mri_id_int, scan_number) IN ({placeholders})
         """
@@ -286,6 +286,19 @@ def fetch_features(conn, masst_matches):
     
     # Merge the feature data with masst_matches
     merged_df = pd.merge(masst_matches_df, feature_df, left_on=['mri_id_int', 'scan_id'], right_on=['mri_id_int', 'scan_number'], how='left')
+
+    # Sort by Cosine and Matching Peaks to prioritize higher values
+    merged_df = merged_df.sort_values(by=['cosine', 'matching_peaks'], ascending=[False, False])
+
+    # Drop duplicates based on mri_id_int, scan_number, and feature_id, keeping the first occurrence
+    merged_df = merged_df.drop_duplicates(subset=['mri_id_int', 'scan_id', 'feature_id'], keep='first')
+
+    # Ensure that rows with missing feature_id are kept
+    missing_feature_id_df = merged_df[merged_df['feature_id'].isna()]
+    non_missing_feature_id_df = merged_df.dropna(subset=['feature_id'])
+
+    # Concatenate the DataFrames back together
+    merged_df = pd.concat([non_missing_feature_id_df, missing_feature_id_df], ignore_index=True)
 
     # Ensure the column names are 'mri_id_int' and 'scan_id' in the merged table
     merged_df.rename(columns={'mri_id_int': 'mri_id_int', 'scan_number': 'scan_id'}, inplace=True)
@@ -390,9 +403,14 @@ def main():
                 # Step 2: Fetch masst_results_table entries for the matching lib_ids
                 masst_results = fetch_masst_results(conn, matching_lib_ids, args.matching_peaks, args.cosine)
 
+                if len(masst_results) == 0:
+                    print("No matching masst_results_table entries found.")
+                    continue
+
                 masst_results = fetch_features(conn, masst_results)
 
-                print(f"Found {len(masst_results)} matching masst_results_table entries.")
+                masst_results_df = pd.DataFrame(masst_results)
+                print(f"Found {len(masst_results_df)} matching masst_results_table entries with columns {', '.join(masst_results_df.columns)}.")
 
                 all_results.append(masst_results)
             except ValueError as e:

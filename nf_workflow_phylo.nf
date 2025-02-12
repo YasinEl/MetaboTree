@@ -118,7 +118,7 @@ process RunSQLquery {
 
     conda "$baseDir/envs/py_env.yml"
 
-    cache false
+    // cache false
 
     publishDir "./nf_output", mode: 'copy'
     
@@ -135,26 +135,6 @@ process RunSQLquery {
     python $TOOL_FOLDER/masst_records_lookup_SQLite.py --SQLite_path "$params.SQLite_path" --smiles "$params.smiles" --structure_file "$baseDir/$params.structure_file"  --matching_peaks $params.matching_peaks --cosine $params.min_cos --match_type $params.match_type --smiles_type $params.smiles_type --smiles_name $params.smiles_name  --output masst_records_hits.csv --masst_now_path "$masst_results"
     """
 }
-
-// process RunWikidataSparql {
-
-//     conda "$baseDir/envs/py_env.yml"
-    
-//     input:
-//     each pubchemids
-
-//     publishDir "./nf_output", mode: 'copy'
-
-//     output:
-//     path "sparql_*.csv"
-    
-//     script:
-//     """
-//      python $TOOL_FOLDER/make_sparql.py  $pubchemids $params.pubchemid $params.molname
-//      wikidata-dl *.sparql
-//      mv wikidata/*.csv ./
-//     """
-// }
 
 
 process VisualizeTreeData {
@@ -309,7 +289,7 @@ process makeTreeAnnotationTable {
 
     script:
     """
-    Rscript $TOOL_FOLDER/make_tree_annotations.R  \
+    Rscript $TOOL_FOLDER/make_tree_annotations_features.R  \
     --input_tree $input_tree \
     --input_masst $input_masst \
     --input_redu $input_redu \
