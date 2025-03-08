@@ -55,7 +55,7 @@ process Update_ReDU_and_limit_to_masst {
 
     script:
     """
-    python $TOOL_FOLDER/update_redu_masst.py
+    python $TOOL_FOLDER/update_redu_masst.py 
     """
 }
 
@@ -118,7 +118,7 @@ process RunSQLquery {
 
     conda "$baseDir/envs/py_env.yml"
 
-    // cache false
+    cache false
 
     publishDir "./nf_output", mode: 'copy'
     
@@ -240,7 +240,7 @@ process CreateTOLTree {
 
     script:
     """
-    python $TOOL_FOLDER/create_tree_of_life.py --input_csv $input_csv --tree_path $DATA_FOLDER/labelled_supertree.tre --usi $params.usi --cid $params.pubchemid 
+    python $TOOL_FOLDER/create_tree_of_life_internal_node_fix.py --input_csv $input_csv --tree_path $DATA_FOLDER/labelled_supertree.tre --usi $params.usi --cid $params.pubchemid 
     """
 }
 
@@ -520,8 +520,8 @@ process Add_Wikidata {
 
 workflow run_phyloMASST {
 
-    (cids, mol_name) = GetStereoCIDs(params.pubchemid)
-    mol_plot = plot_molecule(params.pubchemid)
+    
+    
     sparql_response_csv = RunWikidataSparql(params.structure_file)
 
     redu = Update_ReDU_and_limit_to_masst()
@@ -545,6 +545,9 @@ workflow run_phyloMASST {
 
     }
 
+
+    //(cids, mol_name) = GetStereoCIDs(params.pubchemid)
+    //mol_plot = plot_molecule(params.pubchemid)
     //(ggtree_plot, masst_results) = VisualizeTreeData(tree_nerwik, masst_response_csv, redu_w_datasets, mol_plot, mol_name)  
 
     

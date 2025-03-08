@@ -79,8 +79,10 @@ if(nrow(dt_masst) > 0){
   dt_masst[, match_col := USI2MASST_matchCol(USI[1]), by =.(USI)]
 
 
-  max_indices <- dt_masst[, .I[which.max(Cosine)], by = .(match_col, smiles_name, scan_id)]$V1
-  dt_masst <- dt_masst[max_indices]
+  # max_indices <- dt_masst[, .I[which.max(Cosine)], by = .(match_col, smiles_name, scan_id)]$V1
+  # dt_masst <- dt_masst[max_indices]
+
+  # fwrite(dt_masst, 'dt_masst_check_output_before_cast_even_earlier.tsv', sep = '\t')
 
   dt_masst <- dt_masst[, .(
     
@@ -88,13 +90,15 @@ if(nrow(dt_masst) > 0){
     `Matching Peaks` = max(`Matching Peaks`[which.max(Cosine)]), 
     feature_intensity_TICnorm_best = max(feature_intensity_TICnorm[which.max(Cosine)], na.rm = TRUE), 
     feature_intensity_CLR_best = max(feature_intensity_CLR[which.max(Cosine)], na.rm = TRUE), 
-    feature_intensity_TICnorm_sum = sum(feature_intensity, na.rm= TRUE)/unique(feature_area_TIC), 
+    feature_intensity_TICnorm_sum = sum(feature_intensity, na.rm= TRUE)/unique(feature_area_TIC[!is.na(feature_area_TIC)]), 
     feature_count = sum(feature_intensity_TICnorm[!is.na(feature_intensity_TICnorm) & feature_intensity_TICnorm > 0], na.rm = TRUE), 
     inchi_key_first_block_count_by_usi = paste0(unique(inchi_key_first_block), collapse=',')
     
-    ), by = .(match_col, smiles_name)]
+    ), by = .(USI, smiles_name)]
+print('here')
+  # fwrite(dt_masst, 'dt_masst_check_output_before_cast.tsv', sep = '\t')
 
-  dt_masst <- dcast(dt_masst, match_col ~ smiles_name, 
+  dt_masst <- dcast(dt_masst, USI ~ smiles_name, 
                    value.var = c(
                     "Cosine", "Matching Peaks", "inchi_key_first_block_count_by_usi",
                     "feature_intensity_TICnorm_best", 
@@ -103,13 +107,17 @@ if(nrow(dt_masst) > 0){
                     "feature_count"
                     ),)
   
-  dt_redu_match = unique(dt_redu[, c('match_col', 'uid_leaf')])
+  # fwrite(dt_masst, 'dt_masst_check_output.tsv', sep = '\t')
 
-  dt_redu_match <- merge(dt_masst, dt_redu_match, by = "match_col", all.x = TRUE, all.y = FALSE)
+print(colnames(dt_redu))
 
-  #dt_redu_match = unique(dt_redu_match)
+  # Step 1: Merge dt_masst with dt_redu
+print('Step 3')
+  dt_redu_match = unique(dt_redu[, c('USI', 'uid_leaf')])
+print('Step 4')
+  dt_redu_match <- merge(dt_masst, dt_redu_match, by = "USI", all.x = TRUE, all.y = FALSE)
+print('Step 5')
 
-#print('unique2 done')
 
   dt_tree_ids_redu <- merge(dt_tree_ids_redu, dt_redu_match, by = "uid_leaf", all.x = TRUE, all.y = FALSE)
 
@@ -204,6 +212,7 @@ print('Step 4')
 # Step 4: Merge all results tables by FeatureID and UBERONBodyPartName
 final_result <- Reduce(function(dt1, dt2) merge(dt1, dt2, by = c("FeatureID", "UBERONBodyPartName"), all = TRUE), results_list)
 
+# fwrite(final_result, 'final_result_check.tsv', sep = '\t')
 
 cols = c('FeatureID', 'UBERONBodyPartName',
          'tax_name', 'NCBIDivision', 'biotype', 
@@ -234,6 +243,10 @@ dt_tree_ids_redu <- merge(final_result, dt_tree_ids_redu[, ..cols],
                            by = c("FeatureID", "UBERONBodyPartName"), all.y = TRUE, all.x = FALSE)
 
   print('done with this')
+
+  #check if Homo sapiens is present 
+  print(dt_tree_ids_redu[grepl('Homo sapiens', tax_name)])
+
   #dt_databases = unique(dt_redu[Database != '' & !is.na(Database), c('uid_leaf', 'Database', 'NCBIDivision')])
   print(colnames(dt_tree_ids_redu))
 
